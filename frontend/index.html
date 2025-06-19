@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 頭像工作室</title>
+    <link rel="stylesheet" href="assets/css/main.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <div class="header-left">
+                    <h1>AI 頭像工作室</h1>
+                    <p>選擇喜歡的風格模板，上傳你的照片，AI 幫你換臉！</p>
+                </div>
+                <div class="header-right">
+                    <!-- 分頁切換 -->
+                    <div class="tab-navigation">
+                        <button class="tab-btn active" data-tab="main">🚀 開始換臉</button>
+                        <button class="tab-btn" data-tab="examples">📖 使用範例</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- 主要功能分頁 -->
+        <div class="tab-content" id="main-tab">
+        <main class="main-content">
+            <!-- 上傳區域 -->
+            <section class="upload-section">
+                <h3>📸 上傳你的照片</h3>
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-content" id="uploadContent">
+                        <div class="upload-icon">📷</div>
+                        <p>點擊或拖拽上傳照片</p>
+                        <small>支援 JPG、PNG 格式，建議清晰正面照</small>
+                    </div>
+                    <div class="upload-preview" id="uploadPreview" style="display: none;">
+                        <img id="previewImage" src="" alt="預覽圖片">
+                        <button class="remove-btn" id="removeBtn" type="button">×</button>
+                    </div>
+                </div>
+                <input type="file" id="fileInput" class="file-input" accept="image/*">
+                <div id="preview" class="preview-area"></div>
+                
+                <!-- 來源 Face ID 選擇 -->
+                <div class="face-selection-inline">
+                    <div class="face-input-group">
+                        <div class="input-row">
+                            <label for="sourceFaceIndex">來源臉部編號：</label>
+                            <input type="number" id="sourceFaceIndex" name="sourceFaceIndex" value="1" min="1" max="20" placeholder="第幾張臉">
+                        </div>
+                        <small>你的照片中第幾張臉（從左到右）</small>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- 模板選擇區域 -->
+            <section class="template-selection-section">
+                <h3>🎨 選擇模板風格</h3>
+                
+                <!-- 自訂模板上傳 -->
+                <div class="custom-template-area">
+                    <h4>📁 上傳自訂模板</h4>
+                    <div class="template-upload-area" id="templateUploadArea">
+                        <div class="template-upload-content" id="templateUploadContent">
+                            <div class="upload-icon">🖼️</div>
+                            <p>點擊上傳你的模板圖片</p>
+                            <small>將成為換臉的目標樣式</small>
+                        </div>
+                        <div class="template-upload-preview" id="templateUploadPreview" style="display: none;">
+                            <img id="templatePreviewImage" src="" alt="模板預覽">
+                            <button class="remove-btn" id="templateRemoveBtn" type="button">×</button>
+                        </div>
+                    </div>
+                    <input type="file" id="templateFileInput" class="file-input" accept="image/*">
+                </div>
+                
+                <!-- 預設模板選擇 -->
+                <div class="preset-templates-area">
+                    <h4>📋 或選擇預設模板</h4>
+                    <div class="templates-grid" id="templatesGrid">
+                        <!-- 模板將由 JavaScript 動態載入 -->
+                    </div>
+                </div>
+                
+                <!-- 目標 Face ID 選擇 -->
+                <div class="face-selection-inline">
+                    <div class="face-input-group">
+                        <div class="input-row">
+                            <label for="targetFaceIndex">目標臉部編號：</label>
+                            <input type="number" id="targetFaceIndex" name="targetFaceIndex" value="1" min="1" max="20" placeholder="第幾張臉">
+                        </div>
+                        <small>模板中第幾張臉（從左到右）</small>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- 結果顯示 -->
+            <section class="result-section">
+                <h3>✨ 換臉結果</h3>
+                <div class="result-area" id="resultArea">
+                    <p class="placeholder">處理結果將在這裡顯示</p>
+                </div>
+            </section>
+        </main>
+        
+        <!-- 控制按鈕 -->
+        <div class="controls">
+            <button id="processBtn" class="process-btn" disabled>
+                🚀 開始換臉
+            </button>
+        </div>
+        
+        <!-- 載入動畫 -->
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <p>AI 正在處理中，請稍候...</p>
+            </div>
+        </div>
+        
+        <!-- 處理狀態區域 -->
+        <div class="status-panel" id="statusPanel">
+            <h4>📋 處理狀態</h4>
+            <div class="status-content" id="statusContent">
+                <p class="status-placeholder">尚未開始處理</p>
+            </div>
+        </div>
+        
+        <!-- 訊息提示 -->
+        <div class="message" id="message"></div>
+        </div>
+        
+        <!-- 範例分頁 -->
+        <div class="tab-content" id="examples-tab" style="display: none;">
+            <div class="examples-container">
+                <div class="example-grid">
+                    <!-- 範例 1：單人換臉 -->
+                    <div class="example-item">
+                        <div class="example-title">📸 單人照片換臉</div>
+                        <div class="example-images">
+                            <div class="example-image">
+                                <div class="example-placeholder">你的照片<br>（臉部編號：1）</div>
+                            </div>
+                            <div class="arrow">→</div>
+                            <div class="example-image">
+                                <div class="example-placeholder">選擇模板<br>（臉部編號：1）</div>
+                            </div>
+                            <div class="arrow">→</div>
+                            <div class="example-image">
+                                <div class="example-placeholder">換臉結果</div>
+                            </div>
+                        </div>
+                        <div class="example-description">
+                            最簡單的情況：你的照片只有一張臉，模板也只有一張臉。<br>
+                            設定：來源臉部編號 = 1，目標臉部編號 = 1
+                        </div>
+                    </div>
+                    
+                    <!-- 範例 2：多人照片選擇特定臉部 -->
+                    <div class="example-item">
+                        <div class="example-title">👥 多人照片換臉</div>
+                        <div class="example-images">
+                            <div class="example-image">
+                                <div class="example-placeholder">多人照片<br>（選擇第 2 張臉）</div>
+                            </div>
+                            <div class="arrow">→</div>
+                            <div class="example-image">
+                                <div class="example-placeholder">選擇模板<br>（臉部編號：1）</div>
+                            </div>
+                            <div class="arrow">→</div>
+                            <div class="example-image">
+                                <div class="example-placeholder">換臉結果</div>
+                            </div>
+                        </div>
+                        <div class="example-description">
+                            當你的照片有多人時，可以選擇要換哪一張臉。<br>
+                            設定：來源臉部編號 = 2（右邊的人），目標臉部編號 = 1
+                        </div>
+                    </div>
+                    
+                    <!-- 範例 3：模板多人選擇 -->
+                    <div class="example-item">
+                        <div class="example-title">🎭 模板多人選擇</div>
+                        <div class="example-images">
+                            <div class="example-image">
+                                <div class="example-placeholder">你的照片<br>（臉部編號：1）</div>
+                            </div>
+                            <div class="arrow">→</div>
+                            <div class="example-image">
+                                <div class="example-placeholder">多人模板<br>（選擇第 3 張臉）</div>
+                            </div>
+                            <div class="arrow">→</div>
+                            <div class="example-image">
+                                <div class="example-placeholder">換臉結果</div>
+                            </div>
+                        </div>
+                        <div class="example-description">
+                            當模板有多人時，可以選擇要替換哪一張臉。<br>
+                            設定：來源臉部編號 = 1，目標臉部編號 = 3（右邊的人）
+                        </div>
+                    </div>
+                    
+                    <!-- 範例 4：複雜多人場景 -->
+                    <div class="example-item">
+                        <div class="example-title">👨‍👩‍👧‍👦 複雜多人場景</div>
+                        <div class="example-images">
+                            <div class="example-image">
+                                <div class="example-placeholder">家庭照片<br>（4 人，選第 2 人）</div>
+                            </div>
+                            <div class="arrow">→</div>
+                            <div class="example-image">
+                                <div class="example-placeholder">運動模板<br>（臉部編號：1）</div>
+                            </div>
+                            <div class="arrow">→</div>
+                            <div class="example-image">
+                                <div class="example-placeholder">運動風換臉結果</div>
+                            </div>
+                        </div>
+                        <div class="example-description">
+                            處理複雜的多人場景，精確選擇要換的臉部。<br>
+                            設定：來源臉部編號 = 2（家庭照中的媽媽），目標臉部編號 = 1
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 使用技巧 -->
+                <div class="tips-section">
+                    <div class="tips-title">💡 使用技巧</div>
+                    <ul class="tips-list">
+                        <li><strong>臉部編號順序</strong>：系統會從左到右、從上到下自動編號臉部</li>
+                        <li><strong>清晰度很重要</strong>：上傳清晰的正面照片，效果會更好</li>
+                        <li><strong>多試幾次</strong>：如果效果不理想，可以調整臉部編號重新嘗試</li>
+                        <li><strong>支援最多 20 張臉</strong>：可以處理大型團體照片</li>
+                        <li><strong>自訂模板</strong>：除了預設模板，也可以上傳自己的模板圖片</li>
+                        <li><strong>下載高品質</strong>：處理完成後可以下載高品質的結果圖片</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 配置檔案 -->
+    <script src="config.js"></script>
+    <!-- 主要邏輯 -->
+    <script src="assets/js/main.js"></script>
+</body>
+</html>

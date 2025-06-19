@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 換臉範例 - AI 頭像工作室</title>
+    <link rel="stylesheet" href="assets/css/main.css">
+    <style>
+        .examples-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .example-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+        
+        .example-item {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .example-item:hover {
+            transform: translateY(-5px);
+        }
+        
+        .example-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .example-images {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .example-image {
+            flex: 1;
+            text-align: center;
+        }
+        
+        .example-image img {
+            width: 100%;
+            max-width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .example-image label {
+            display: block;
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 8px;
+        }
+        
+        .arrow {
+            font-size: 2em;
+            color: #667eea;
+            flex-shrink: 0;
+        }
+        
+        .example-description {
+            font-size: 0.9em;
+            color: #666;
+            text-align: center;
+            line-height: 1.5;
+        }
+        
+        .back-btn {
+            display: inline-block;
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+        
+        .tips-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 30px;
+            border: 2px solid #e9ecef;
+        }
+        
+        .tips-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .tips-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .tips-list li {
+            margin-bottom: 10px;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .tips-list li::before {
+            content: "💡";
+            position: absolute;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="examples-container">
+        <a href="index.html" class="back-btn">← 返回主頁</a>
+        
+        <header class="header">
+            <h1>AI 換臉範例展示</h1>
+            <p>看看 AI 換臉的神奇效果，了解如何使用臉部編號功能</p>
+        </header>
+        
+        <div class="example-grid">
+            <!-- 範例 1：單人換臉 -->
+            <div class="example-item">
+                <div class="example-title">📸 單人照片換臉</div>
+                <div class="example-images">
+                    <div class="example-image">
+                        <img src="assets/images/examples/input1.jpg" alt="輸入照片" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjYwIiBjeT0iNDAiIHI9IjE1IiBmaWxsPSIjOUI5QjlCIi8+CjxyZWN0IHg9IjQ1IiB5PSI1NSIgd2lkdGg9IjMwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjOUI5QjlCIi8+CjwvdGV4dD4KPC9zdmc+'">
+                        <label>你的照片<br>（臉部編號：1）</label>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="example-image">
+                        <img src="assets/images/templates/step01.jpg" alt="模板">
+                        <label>選擇模板<br>（臉部編號：1）</label>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="example-image">
+                        <img src="assets/images/examples/result1.jpg" alt="結果" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiBmaWxsPSIjRDRFRERBIi8+CjxjaXJjbGUgY3g9IjYwIiBjeT0iNDAiIHI9IjE1IiBmaWxsPSIjMjhBNzQ1Ii8+CjxyZWN0IHg9IjQ1IiB5PSI1NSIgd2lkdGg9IjMwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjMjhBNzQ1Ii8+Cjx0ZXh0IHg9IjYwIiB5PSIxMTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiMyOEE3NDUiIGZvbnQtc2l6ZT0iMTIiPuaIkOWKnzwvdGV4dD4KPC9zdmc+'">
+                        <label>換臉結果</label>
+                    </div>
+                </div>
+                <div class="example-description">
+                    最簡單的情況：你的照片只有一張臉，模板也只有一張臉。<br>
+                    設定：來源臉部編號 = 1，目標臉部編號 = 1
+                </div>
+            </div>
+            
+            <!-- 範例 2：多人照片選擇特定臉部 -->
+            <div class="example-item">
+                <div class="example-title">👥 多人照片換臉</div>
+                <div class="example-images">
+                    <div class="example-image">
+                        <img src="assets/images/examples/input2.jpg" alt="多人照片" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjQwIiBjeT0iNDAiIHI9IjEyIiBmaWxsPSIjOUI5QjlCIi8+CjxjaXJjbGUgY3g9IjgwIiBjeT0iNDAiIHI9IjEyIiBmaWxsPSIjNjY3RUVBIi8+CjxyZWN0IHg9IjI4IiB5PSI1MiIgd2lkdGg9IjI0IiBoZWlnaHQ9IjMwIiBmaWxsPSIjOUI5QjlCIi8+CjxyZWN0IHg9IjY4IiB5PSI1MiIgd2lkdGg9IjI0IiBoZWlnaHQ9IjMwIiBmaWxsPSIjNjY3RUVBIi8+Cjx0ZXh0IHg9IjQwIiB5PSI5NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzlCOUI5QiIgZm9udC1zaXplPSI4Ij4xPC90ZXh0Pgo8dGV4dCB4PSI4MCIgeT0iOTUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM2NjdFRUEiIGZvbnQtc2l6ZT0iOCI+MjwvdGV4dD4KPC9zdmc+'">
+                        <label>多人照片<br>（選擇第 2 張臉）</label>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="example-image">
+                        <img src="assets/images/templates/step02.jpg" alt="模板">
+                        <label>選擇模板<br>（臉部編號：1）</label>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="example-image">
+                        <img src="assets/images/examples/result2.jpg" alt="結果" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiBmaWxsPSIjRDRFRERBIi8+CjxjaXJjbGUgY3g9IjYwIiBjeT0iNDAiIHI9IjE1IiBmaWxsPSIjNjY3RUVBIi8+CjxyZWN0IHg9IjQ1IiB5PSI1NSIgd2lkdGg9IjMwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjNjY3RUVBIi8+Cjx0ZXh0IHg9IjYwIiB5PSIxMTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM2NjdFRUEiIGZvbnQtc2l6ZT0iMTIiPuaIkOWKnzwvdGV4dD4KPC9zdmc+'">
+                        <label>換臉結果</label>
+                    </div>
+                </div>
+                <div class="example-description">
+                    當你的照片有多人時，可以選擇要換哪一張臉。<br>
+                    設定：來源臉部編號 = 2（右邊的人），目標臉部編號 = 1
+                </div>
+            </div>
+            
+            <!-- 範例 3：模板多人選擇 -->
+            <div class="example-item">
+                <div class="example-title">🎭 模板多人選擇</div>
+                <div class="example-images">
+                    <div class="example-image">
+                        <img src="assets/images/examples/input3.jpg" alt="單人照片" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjYwIiBjeT0iNDAiIHI9IjE1IiBmaWxsPSIjRkY2QjZCIi8+CjxyZWN0IHg9IjQ1IiB5PSI1NSIgd2lkdGg9IjMwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRkY2QjZCIi8+CjwvdGV4dD4KPC9zdmc+'">
+                        <label>你的照片<br>（臉部編號：1）</label>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="example-image">
+                        <img src="assets/images/examples/template_multi.jpg" alt="多人模板" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjMwIiBjeT0iMzAiIHI9IjEwIiBmaWxsPSIjOUI5QjlCIi8+CjxjaXJjbGUgY3g9IjYwIiBjeT0iMzAiIHI9IjEwIiBmaWxsPSIjOUI5QjlCIi8+CjxjaXJjbGUgY3g9IjkwIiBjeT0iMzAiIHI9IjEwIiBmaWxsPSIjNjY3RUVBIi8+CjxyZWN0IHg9IjIwIiB5PSI0MCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjI1IiBmaWxsPSIjOUI5QjlCIi8+CjxyZWN0IHg9IjUwIiB5PSI0MCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjI1IiBmaWxsPSIjOUI5QjlCIi8+CjxyZWN0IHg9IjgwIiB5PSI0MCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjI1IiBmaWxsPSIjNjY3RUVBIi8+Cjx0ZXh0IHg9IjMwIiB5PSI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzlCOUI5QiIgZm9udC1zaXplPSI2Ij4xPC90ZXh0Pgo8dGV4dCB4PSI2MCIgeT0iODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM5QjlCOUIiIGZvbnQtc2l6ZT0iNiI+MjwvdGV4dD4KPHR4dCB4PSI5MCIgeT0iODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM2NjdFRUEiIGZvbnQtc2l6ZT0iNiI+MzwvdGV4dD4KPC9zdmc+'">
+                        <label>多人模板<br>（選擇第 3 張臉）</label>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="example-image">
+                        <img src="assets/images/examples/result3.jpg" alt="結果" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiBmaWxsPSIjRDRFRERBIi8+CjxjaXJjbGUgY3g9IjMwIiBjeT0iMzAiIHI9IjEwIiBmaWxsPSIjOUI5QjlCIi8+CjxjaXJjbGUgY3g9IjYwIiBjeT0iMzAiIHI9IjEwIiBmaWxsPSIjOUI5QjlCIi8+CjxjaXJjbGUgY3g9IjkwIiBjeT0iMzAiIHI9IjEwIiBmaWxsPSIjRkY2QjZCIi8+CjxyZWN0IHg9IjIwIiB5PSI0MCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjI1IiBmaWxsPSIjOUI5QjlCIi8+CjxyZWN0IHg9IjUwIiB5PSI0MCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjI1IiBmaWxsPSIjOUI5QjlCIi8+CjxyZWN0IHg9IjgwIiB5PSI0MCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjI1IiBmaWxsPSIjRkY2QjZCIi8+Cjx0ZXh0IHg9IjYwIiB5PSIxMTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNGRjZCNkIiIGZvbnQtc2l6ZT0iMTAiPuaIkOWKnzwvdGV4dD4KPC9zdmc+'">
+                        <label>換臉結果</label>
+                    </div>
+                </div>
+                <div class="example-description">
+                    當模板有多人時，可以選擇要替換哪一張臉。<br>
+                    設定：來源臉部編號 = 1，目標臉部編號 = 3（右邊的人）
+                </div>
+            </div>
+            
+            <!-- 範例 4：複雜多人場景 -->
+            <div class="example-item">
+                <div class="example-title">👨‍👩‍👧‍👦 複雜多人場景</div>
+                <div class="example-images">
+                    <div class="example-image">
+                        <img src="assets/images/examples/input4.jpg" alt="家庭照片" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjMwIiBjeT0iMzAiIHI9IjEwIiBmaWxsPSIjOUI5QjlCIi8+CjxjaXJjbGUgY3g9IjYwIiBjeT0iMzAiIHI9IjEwIiBmaWxsPSIjRkY2QjZCIi8+CjxjaXJjbGUgY3g9IjkwIiBjeT0iMzAiIHI9IjEwIiBmaWxsPSIjOUI5QjlCIi8+CjxjaXJjbGUgY3g9IjQ1IiBjeT0iNjAiIHI9IjgiIGZpbGw9IiM5QjlCOUIiLz4KPHR4dCB4PSIzMCIgeT0iNzUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM5QjlCOUIiIGZvbnQtc2l6ZT0iNiI+MTwvdGV4dD4KPHR4dCB4PSI2MCIgeT0iNzUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNGRjZCNkIiIGZvbnQtc2l6ZT0iNiI+MjwvdGV4dD4KPHR4dCB4PSI5MCIgeT0iNzUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM5QjlCOUIiIGZvbnQtc2l6ZT0iNiI+MzwvdGV4dD4KPHR4dCB4PSI0NSIgeT0iOTUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM5QjlCOUIiIGZvbnQtc2l6ZT0iNiI+NDwvdGV4dD4KPC9zdmc+'">
+                        <label>家庭照片<br>（4 人，選第 2 人）</label>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="example-image">
+                        <img src="assets/images/templates/step05.jpg" alt="運動模板">
+                        <label>運動模板<br>（臉部編號：1）</label>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="example-image">
+                        <img src="assets/images/examples/result4.jpg" alt="結果" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiBmaWxsPSIjRDRFRERBIi8+CjxjaXJjbGUgY3g9IjYwIiBjeT0iNDAiIHI9IjE1IiBmaWxsPSIjRkY2QjZCIi8+CjxyZWN0IHg9IjQ1IiB5PSI1NSIgd2lkdGg9IjMwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjMUFCQzlDIi8+Cjx0ZXh0IHg9IjYwIiB5PSIxMTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNGRjZCNkIiIGZvbnQtc2l6ZT0iMTAiPuaIkOWKnzwvdGV4dD4KPC9zdmc+'">
+                        <label>運動風換臉結果</label>
+                    </div>
+                </div>
+                <div class="example-description">
+                    處理複雜的多人場景，精確選擇要換的臉部。<br>
+                    設定：來源臉部編號 = 2（家庭照中的媽媽），目標臉部編號 = 1
+                </div>
+            </div>
+        </div>
+        
+        <!-- 使用技巧 -->
+        <div class="tips-section">
+            <div class="tips-title">💡 使用技巧</div>
+            <ul class="tips-list">
+                <li><strong>臉部編號順序</strong>：系統會從左到右、從上到下自動編號臉部</li>
+                <li><strong>清晰度很重要</strong>：上傳清晰的正面照片，效果會更好</li>
+                <li><strong>多試幾次</strong>：如果效果不理想，可以調整臉部編號重新嘗試</li>
+                <li><strong>支援最多 20 張臉</strong>：可以處理大型團體照片</li>
+                <li><strong>自訂模板</strong>：除了預設模板，也可以上傳自己的模板圖片</li>
+                <li><strong>下載高品質</strong>：處理完成後可以下載高品質的結果圖片</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

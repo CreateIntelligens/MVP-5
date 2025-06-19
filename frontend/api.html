@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API 文檔 - AI 頭像工作室</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft JhengHei', 'Segoe UI', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f8f9fa;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 30px 0;
+            text-align: center;
+            margin-bottom: 30px;
+            border-radius: 10px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .nav-links {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .nav-links a {
+            display: inline-block;
+            margin: 0 10px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .nav-links a:hover {
+            background: #5a6fd8;
+        }
+
+        .api-section {
+            background: white;
+            margin-bottom: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .section-header {
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .section-header h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .section-content {
+            padding: 20px;
+        }
+
+        .api-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .api-table th,
+        .api-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .api-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .method {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .method.get {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .method.post {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .method.delete {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .endpoint {
+            font-family: 'Courier New', monospace;
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+
+        .code-block pre {
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .example {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .example h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .status-code {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .status-200 {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-400 {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-500 {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .parameter-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+
+        .parameter-table th,
+        .parameter-table td {
+            padding: 8px 12px;
+            border: 1px solid #e9ecef;
+            text-align: left;
+        }
+
+        .parameter-table th {
+            background: #f8f9fa;
+        }
+
+        .required {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .optional {
+            color: #6c757d;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .api-table,
+            .parameter-table {
+                font-size: 0.9em;
+            }
+
+            .nav-links a {
+                display: block;
+                margin: 5px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 AI 頭像工作室 API 文檔</h1>
+            <p>基於 FastAPI 的 RESTful API 服務</p>
+        </div>
+
+        <div class="nav-links">
+            <a href="/api/health" target="_blank">💚 健康檢查</a>
+        </div>
+
+        <!-- API 概覽 -->
+        <div class="api-section">
+            <div class="section-header">
+                <h2>📋 API 端點概覽</h2>
+                <p>所有 API 端點的快速參考</p>
+            </div>
+            <div class="section-content">
+                <table class="api-table">
+                    <thead>
+                        <tr>
+                            <th>方法</th>
+                            <th>端點</th>
+                            <th>描述</th>
+                            <th>認證</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="method post">POST</span></td>
+                            <td><code class="endpoint">/api/face-swap</code></td>
+                            <td>執行 AI 換臉操作</td>
+                            <td>無</td>
+                        </tr>
+                        <tr>
+                            <td><span class="method post">POST</span></td>
+                            <td><code class="endpoint">/api/validate-image</code></td>
+                            <td>驗證圖片並返回臉部資訊</td>
+                            <td>無</td>
+                        </tr>
+                        <tr>
+                            <td><span class="method get">GET</span></td>
+                            <td><code class="endpoint">/api/templates</code></td>
+                            <td>獲取可用模板列表</td>
+                            <td>無</td>
+                        </tr>
+                        <tr>
+                            <td><span class="method get">GET</span></td>
+                            <td><code class="endpoint">/api/health</code></td>
+                            <td>健康檢查</td>
+                            <td>無</td>
+                        </tr>
+                        <tr>
+                            <td><span class="method post">POST</span></td>
+                            <td><code class="endpoint">/api/cleanup</code></td>
+                            <td>手動執行檔案清理</td>
+                            <td>無</td>
+                        </tr>
+                        <tr>
+                            <td><span class="method get">GET</span></td>
+                            <td><code class="endpoint">/api/storage/stats</code></td>
+                            <td>獲取儲存統計資訊</td>
+                            <td>無</td>
+                        </tr>
+                        <tr>
+                            <td><span class="method get">GET</span></td>
+                            <td><code class="endpoint">/api/results/{filename}</code></td>
+                            <td>下載處理結果檔案</td>
+                            <td>無</td>
+                        </tr>
+                        <tr>
+                            <td><span class="method delete">DELETE</span></td>
+                            <td><code class="endpoint">/api/results/{filename}</code></td>
+                            <td>刪除處理結果檔案</td>
+                            <td>無</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 換臉 API -->
+        <div class="api-section">
+            <div class="section-header">
+                <h2>🎭 換臉 API</h2>
+                <p>核心的 AI 換臉功能</p>
+            </div>
+            <div class="section-content">
+                <h3><span class="method post">POST</span> /api/face-swap</h3>
+                <p>執行 AI 換臉操作，支援預設模板和自訂模板。</p>
+
+                <h4>請求參數</h4>
+                <table class="parameter-table">
+                    <thead>
+                        <tr>
+                            <th>參數名</th>
+                            <th>類型</th>
+                            <th>必填</th>
+                            <th>描述</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>file</code></td>
+                            <td>File</td>
+                            <td><span class="required">必填</span></td>
+                            <td>使用者上傳的照片檔案</td>
+                        </tr>
+                        <tr>
+                            <td><code>template_id</code></td>
+                            <td>String</td>
+                            <td><span class="required">必填</span></td>
+                            <td>模板 ID (1-6) 或 "custom"</td>
+                        </tr>
+                        <tr>
+                            <td><code>template_file</code></td>
+                            <td>File</td>
+                            <td><span class="optional">選填</span></td>
+                            <td>自訂模板檔案（當 template_id="custom" 時）</td>
+                        </tr>
+                        <tr>
+                            <td><code>source_face_index</code></td>
+                            <td>Integer</td>
+                            <td><span class="optional">選填</span></td>
+                            <td>來源圖片中的臉部索引（預設: 0）</td>
+                        </tr>
+                        <tr>
+                            <td><code>target_face_index</code></td>
+                            <td>Integer</td>
+                            <td><span class="optional">選填</span></td>
+                            <td>模板圖片中的臉部索引（預設: 0）</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="example">
+                    <h4>📝 請求範例</h4>
+                    <div class="code-block">
+                        <pre>curl -X POST "http://localhost:8882/api/face-swap" \
+  -F "file=@user_photo.jpg" \
+  -F "template_id=1" \
+  -F "source_face_index=0" \
+  -F "target_face_index=0"</pre>
+                    </div>
+                </div>
+
+                <h4>回應格式</h4>
+                <p><span class="status-code status-200">200 OK</span> 成功回應：</p>
+                <div class="code-block">
+                    <pre>{
+  "success": true,
+  "message": "換臉完成！",
+  "result_url": "/results/result_abc123.jpg",
+  "template_id": "1",
+  "template_name": "模板 1",
+  "template_description": "預設模板"
+}</pre>
+                </div>
+
+                <p><span class="status-code status-400">400 Bad Request</span> 錯誤回應：</p>
+                <div class="code-block">
+                    <pre>{
+  "detail": "檔案格式不支援"
+}</pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- 圖片驗證 API -->
+        <div class="api-section">
+            <div class="section-header">
+                <h2>🔍 圖片驗證 API</h2>
+                <p>驗證圖片並獲取臉部資訊</p>
+            </div>
+            <div class="section-content">
+                <h3><span class="method post">POST</span> /api/validate-image</h3>
+                <p>驗證上傳的圖片是否包含可識別的臉部。</p>
+
+                <h4>請求參數</h4>
+                <table class="parameter-table">
+                    <thead>
+                        <tr>
+                            <th>參數名</th>
+                            <th>類型</th>
+                            <th>必填</th>
+                            <th>描述</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>file</code></td>
+                            <td>File</td>
+                            <td><span class="required">必填</span></td>
+                            <td>要驗證的圖片檔案</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>回應格式</h4>
+                <p><span class="status-code status-200">200 OK</span> 成功回應：</p>
+                <div class="code-block">
+                    <pre>{
+  "success": true,
+  "message": "圖片驗證成功",
+  "image_info": {
+    "valid": true,
+    "face_count": 2,
+    "image_size": [1920, 1080]
+  }
+}</pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- 模板 API -->
+        <div class="api-section">
+            <div class="section-header">
+                <h2>🎨 模板 API</h2>
+                <p>獲取可用的換臉模板</p>
+            </div>
+            <div class="section-content">
+                <h3><span class="method get">GET</span> /api/templates</h3>
+                <p>獲取所有可用的預設模板列表。</p>
+
+                <h4>回應格式</h4>
+                <p><span class="status-code status-200">200 OK</span> 成功回應：</p>
+                <div class="code-block">
+                    <pre>{
+  "success": true,
+  "templates": [
+    {
+      "id": "1",
+      "name": "模板 1",
+      "description": "預設模板",
+      "image_url": "/assets/images/templates/step01.jpg"
+    },
+    {
+      "id": "2",
+      "name": "模板 2", 
+      "description": "預設模板",
+      "image_url": "/assets/images/templates/step02.jpg"
+    }
+  ]
+}</pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- 系統 API -->
+        <div class="api-section">
+            <div class="section-header">
+                <h2>⚙️ 系統 API</h2>
+                <p>系統監控和管理功能</p>
+            </div>
+            <div class="section-content">
+                <h3><span class="method get">GET</span> /api/health</h3>
+                <p>檢查 API 服務健康狀態。</p>
+                <div class="code-block">
+                    <pre>{
+  "status": "healthy",
+  "message": "AI 頭像工作室 API 運行正常",
+  "version": "1.0.0"
+}</pre>
+                </div>
+
+                <h3><span class="method get">GET</span> /api/storage/stats</h3>
+                <p>獲取當前儲存空間使用統計。</p>
+                <div class="code-block">
+                    <pre>{
+  "success": true,
+  "data": {
+    "results": {
+      "file_count": 15,
+      "total_size": 52428800,
+      "total_size_formatted": "50.0MB"
+    },
+    "uploads": {
+      "file_count": 3,
+      "total_size": 10485760,
+      "total_size_formatted": "10.0MB"
+    }
+  }
+}</pre>
+                </div>
+
+                <h3><span class="method post">POST</span> /api/cleanup</h3>
+                <p>手動執行檔案清理操作。</p>
+                <div class="code-block">
+                    <pre>{
+  "success": true,
+  "message": "檔案清理完成",
+  "data": {
+    "status": "completed",
+    "total_files_cleaned": 5,
+    "total_size_cleaned": 10485760
+  }
+}</pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- 錯誤代碼 -->
+        <div class="api-section">
+            <div class="section-header">
+                <h2>❌ 錯誤代碼</h2>
+                <p>常見的 API 錯誤代碼和處理方式</p>
+            </div>
+            <div class="section-content">
+                <table class="api-table">
+                    <thead>
+                        <tr>
+                            <th>狀態碼</th>
+                            <th>錯誤類型</th>
+                            <th>描述</th>
+                            <th>解決方案</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="status-code status-400">400</span></td>
+                            <td>Bad Request</td>
+                            <td>請求參數錯誤或檔案格式不支援</td>
+                            <td>檢查請求參數和檔案格式</td>
+                        </tr>
+                        <tr>
+                            <td><span class="status-code status-400">413</span></td>
+                            <td>Payload Too Large</td>
+                            <td>上傳檔案過大</td>
+                            <td>壓縮圖片或使用較小的檔案</td>
+                        </tr>
+                        <tr>
+                            <td><span class="status-code status-400">415</span></td>
+                            <td>Unsupported Media Type</td>
+                            <td>不支援的檔案格式</td>
+                            <td>使用 JPG、PNG 或 WebP 格式</td>
+                        </tr>
+                        <tr>
+                            <td><span class="status-code status-500">500</span></td>
+                            <td>Internal Server Error</td>
+                            <td>伺服器內部錯誤</td>
+                            <td>檢查伺服器日誌或聯繫管理員</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 使用限制 -->
+        <div class="api-section">
+            <div class="section-header">
+                <h2>⚠️ 使用限制</h2>
+                <p>API 使用的限制和注意事項</p>
+            </div>
+            <div class="section-content">
+                <ul>
+                    <li><strong>檔案大小限制</strong>：最大 10MB</li>
+                    <li><strong>支援格式</strong>：JPG、JPEG、PNG、WebP</li>
+                    <li><strong>臉部數量</strong>：最多支援 20 張臉部</li>
+                    <li><strong>結果保留</strong>：處理結果保留 24 小時</li>
+                    <li><strong>上傳檔案</strong>：臨時檔案保留 1 小時</li>
+                    <li><strong>並發限制</strong>：建議同時處理不超過 5 個請求</li>
+                </ul>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 40px; color: #6c757d;">
+            <p>© 2024 AI 頭像工作室 - 僅供學習和研究使用</p>
+        </div>
+    </div>
+</body>
+</html>
