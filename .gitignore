@@ -1,6 +1,6 @@
 # 處理結果檔案（不需要版本控制）
-backend/results/
-backend/uploads/
+backend/results/.*
+backend/uploads/.*
 
 # AI 模型檔案（檔案太大，需要另外下載）
 # inswapper_128.onnx 檔案 529MB，超過 GitHub 100MB 限制
