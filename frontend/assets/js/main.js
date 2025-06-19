@@ -319,7 +319,20 @@ async function handleProcessImage() {
     const statusId = addStatusItem('AI 換臉處理', `使用模板：${templateName}`, 'processing');
     
     try {
-        const result = await processImage(selectedFile, selectedTemplate);
+        // 設置任務開始時間
+        window.taskStartTime = Date.now();
+        
+        // 提交任務
+        const taskResult = await submitFaceSwapTask(selectedFile, selectedTemplate);
+        const taskId = taskResult.task_id;
+        
+        // 更新狀態顯示任務ID
+        updateStatusItem(statusId, {
+            description: `任務已提交 (ID: ${taskId.substring(0, 8)}...)，正在處理...`
+        });
+        
+        // 開始輪詢任務狀態
+        const result = await pollTaskStatus(taskId, statusId);
         
         // 更新狀態為完成
         updateStatusItem(statusId, {
@@ -348,8 +361,8 @@ async function handleProcessImage() {
     }
 }
 
-// 呼叫後端 API 處理圖片
-async function processImage(file, templateId) {
+// 提交換臉任務（帶重試機制）
+async function submitFaceSwapTask(file, templateId, retryCount = 0) {
     const formData = new FormData();
     formData.append('file', file);
     
@@ -395,11 +408,112 @@ async function processImage(file, templateId) {
     } catch (error) {
         clearTimeout(timeoutId);
         
+        // 如果是超時錯誤且還有重試次數，則重試
+        if ((error.name === 'AbortError' || error.message.includes('timeout')) && 
+            retryCount < API_CONFIG.REQUEST.MAX_RETRIES) {
+            
+            console.log(`任務提交失敗，${API_CONFIG.REQUEST.RETRY_DELAY / 1000}秒後進行第${retryCount + 1}次重試...`);
+            
+            // 等待重試延遲
+            await Utils.delay(API_CONFIG.REQUEST.RETRY_DELAY);
+            
+            // 遞歸重試
+            return submitFaceSwapTask(file, templateId, retryCount + 1);
+        }
+        
         if (error.name === 'AbortError') {
-            throw new Error('請求超時，請重試');
+            throw new Error(`任務提交超時，已重試 ${retryCount} 次，請稍後再試`);
         }
         
         throw error;
+    }
+}
+
+// 輪詢任務狀態
+async function pollTaskStatus(taskId, statusId) {
+    const startTime = Date.now();
+    const maxPollTime = API_CONFIG.REQUEST.MAX_POLL_TIME;
+    const pollInterval = API_CONFIG.REQUEST.POLL_INTERVAL;
+    
+    while (Date.now() - startTime < maxPollTime) {
+        try {
+            const response = await fetch(Utils.getApiUrl(`${API_CONFIG.ENDPOINTS.FACE_SWAP_STATUS}/${taskId}`));
+            
+            if (!response.ok) {
+                throw new Error(`查詢狀態失敗: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            const taskStatus = result.task_status;
+            
+            // 更新進度顯示
+            updateTaskProgress(taskStatus, statusId);
+            
+            if (taskStatus.status === 'completed') {
+                return taskStatus;
+            } else if (taskStatus.status === 'failed') {
+                throw new Error(taskStatus.error || '任務處理失敗');
+            }
+            
+            // 等待下次輪詢
+            await Utils.delay(pollInterval);
+            
+        } catch (error) {
+            console.error('輪詢任務狀態失敗:', error);
+            throw error;
+        }
+    }
+    
+    throw new Error('任務處理超時，請稍後查看結果或重新提交');
+}
+
+// 更新任務進度
+function updateTaskProgress(taskStatus, statusId) {
+    // 更新結果區域進度
+    updateResultProgress(taskStatus.progress, taskStatus.message);
+    
+    // 更新狀態項目
+    updateStatusItem(statusId, {
+        description: `${taskStatus.message} (${taskStatus.progress}%)`
+    });
+}
+
+// 更新結果區域進度
+function updateResultProgress(progress, message) {
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    const progressTime = document.getElementById('progressTime');
+    
+    if (progressFill) {
+        progressFill.style.width = `${progress}%`;
+    }
+    
+    if (progressText) {
+        progressText.textContent = message;
+    }
+    
+    if (progressTime) {
+        const elapsed = Math.floor((Date.now() - (window.taskStartTime || Date.now())) / 1000);
+        progressTime.textContent = `處理時間：${elapsed}s`;
+    }
+    
+    // 更新步驟狀態
+    updateStepsByProgress(progress);
+}
+
+// 根據進度更新步驟狀態
+function updateStepsByProgress(progress) {
+    if (progress >= 10 && progress < 30) {
+        updateStep(1, 'completed');
+        updateStep(2, 'active');
+    } else if (progress >= 30 && progress < 50) {
+        updateStep(2, 'completed');
+        updateStep(3, 'active');
+    } else if (progress >= 50 && progress < 90) {
+        updateStep(3, 'completed');
+        updateStep(4, 'active');
+    } else if (progress >= 90) {
+        updateStep(4, 'completed');
     }
 }
 
@@ -430,7 +544,7 @@ function showProgressInResult(show) {
                     <div class="progress-fill" id="progressFill"></div>
                 </div>
                 <div class="progress-text" id="progressText">正在準備處理...</div>
-                <div class="progress-time" id="progressTime">預估時間：30 秒</div>
+                <div class="progress-time" id="progressTime">首次使用可能需要較長時間進行模型初始化</div>
             </div>
         `;
         startResultProgressTimer();
@@ -470,37 +584,40 @@ function updateResultProgress() {
     
     if (!progressFill || !progressText || !progressTime) return;
     
-    const estimatedTime = 30;
-    const remaining = Math.max(0, estimatedTime - resultProgressSeconds);
-    
-    // 更新進度條
-    const progress = Math.min(100, (resultProgressSeconds / estimatedTime) * 100);
+    // 動態進度條（基於時間但不設上限）
+    const progress = Math.min(95, Math.log(resultProgressSeconds + 1) * 20);
     progressFill.style.width = `${progress}%`;
     
     // 更新步驟狀態
-    if (resultProgressSeconds >= 2 && currentStep < 2) {
+    if (resultProgressSeconds >= 3 && currentStep < 2) {
         updateStep(1, 'completed');
         updateStep(2, 'active');
         currentStep = 2;
         progressText.textContent = '正在偵測臉部特徵...';
-    } else if (resultProgressSeconds >= 8 && currentStep < 3) {
+    } else if (resultProgressSeconds >= 10 && currentStep < 3) {
         updateStep(2, 'completed');
         updateStep(3, 'active');
         currentStep = 3;
         progressText.textContent = 'AI 正在進行換臉處理...';
-    } else if (resultProgressSeconds >= 25 && currentStep < 4) {
+    } else if (resultProgressSeconds >= 30 && currentStep < 4) {
         updateStep(3, 'completed');
         updateStep(4, 'active');
         currentStep = 4;
         progressText.textContent = '正在生成最終結果...';
     }
     
-    // 更新時間顯示
-    if (resultProgressSeconds < estimatedTime) {
-        progressTime.textContent = `已處理：${resultProgressSeconds}s / 預估：${estimatedTime}s (剩餘約 ${remaining}s)`;
+    // 更新時間顯示（累計時間 + 首次使用提示）
+    let timeMessage = `處理時間：${resultProgressSeconds}s`;
+    
+    if (resultProgressSeconds <= 60) {
+        timeMessage += ' (首次使用可能需要較長時間進行模型初始化)';
+    } else if (resultProgressSeconds <= 120) {
+        timeMessage += ' (正在處理中，請耐心等候)';
     } else {
-        progressTime.textContent = `處理時間：${resultProgressSeconds}s (處理時間較長，請耐心等候)`;
+        timeMessage += ' (處理時間較長，但系統正在運行中)';
     }
+    
+    progressTime.textContent = timeMessage;
 }
 
 function updateStep(stepNumber, status) {

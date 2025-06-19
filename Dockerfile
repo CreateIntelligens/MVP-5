@@ -22,15 +22,8 @@ RUN apt-get update && apt-get install -y \
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 創建模型目錄並下載 AI 模型檔案
-RUN mkdir -p /app/models && \
-    echo "正在下載 AI 模型檔案..." && \
-    (wget -O /app/models/inswapper_128.onnx \
-     "https://huggingface.co/spaces/mkrzyzan/face-swap/resolve/main/inswapper_128.onnx" || \
-     wget -O /app/models/inswapper_128.onnx \
-     "https://github.com/facefusion/facefusion-assets/releases/download/models/inswapper_128.onnx") && \
-    echo "AI 模型下載完成" && \
-    ls -lh /app/models/
+# 創建模型目錄（模型檔案由 docker-compose.yml 中的 model-downloader 服務下載）
+RUN mkdir -p /app/{models,results,uploads}
 
 # 由於使用 volume 掛載，不需要 COPY 後端代碼
 # 後端代碼會通過 docker-compose.yml 中的 volume 掛載

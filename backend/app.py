@@ -111,6 +111,16 @@ async def startup_event():
         asyncio.create_task(cleanup_manager.start_periodic_cleanup())
         print(f"⏰ 定期清理已啟動，間隔: {FILE_CLEANUP_CONFIG['CLEANUP_INTERVAL']/3600:.1f}小時")
     
+    # 模型預熱
+    print("🔥 正在預熱 AI 模型...")
+    try:
+        from core.face_processor import get_face_processor
+        processor = get_face_processor()
+        print("✅ AI 模型預熱完成")
+    except Exception as e:
+        print(f"⚠️  模型預熱失敗: {e}")
+        print("   首次請求時將進行模型初始化")
+    
     print("🚀 AI 頭像工作室 API 啟動完成")
     print("📱 API 文檔：http://localhost:3001/api/docs")
     print("🔍 健康檢查：http://localhost:3001/api/health")

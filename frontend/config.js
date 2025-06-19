@@ -7,13 +7,19 @@ const API_CONFIG = {
     ENDPOINTS: {
         TEMPLATES: '/templates',
         FACE_SWAP: '/face-swap',
+        FACE_SWAP_STATUS: '/face-swap/status',
+        FACE_SWAP_TASKS: '/face-swap/tasks',
         RESULTS: '/results',
         HEALTH: '/health'
     },
     
     // 請求配置
     REQUEST: {
-        TIMEOUT: 60000, // 60 秒超時
+        TIMEOUT: 120000, // 120 秒超時（2分鐘，用於提交任務）
+        POLL_INTERVAL: 3000, // 輪詢間隔 3 秒
+        MAX_POLL_TIME: 600000, // 最大輪詢時間 10 分鐘
+        MAX_RETRIES: 5, // 最大重試次數
+        RETRY_DELAY: 10000, // 重試延遲 10 秒
         HEADERS: {
             'Accept': 'application/json'
         }
