@@ -1,4 +1,28 @@
 services:
+  # 模型下載服務
+  model-downloader:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-face-swap-model-downloader
+    volumes:
+      - ./backend:/app
+    command: >
+      sh -c "
+        if [ ! -f /app/models/inswapper_128.onnx ]; then
+          echo '🔄 正在下載 AI 模型檔案...'
+          mkdir -p /app/models
+          (wget --progress=bar:force:noscroll -O /app/models/inswapper_128.onnx 'https://huggingface.co/spaces/mkrzyzan/face-swap/resolve/main/inswapper_128.onnx' ||
+           wget --progress=bar:force:noscroll -O /app/models/inswapper_128.onnx 'https://github.com/facefusion/facefusion-assets/releases/download/models/inswapper_128.onnx') &&
+          echo '✅ AI 模型下載完成！' &&
+          ls -lh /app/models/inswapper_128.onnx
+        else
+          echo '✅ AI 模型已存在，跳過下載'
+          ls -lh /app/models/inswapper_128.onnx
+        fi
+      "
+    restart: "no"
+
   frontend:
     image: docker.io/library/nginx:alpine
     container_name: ai-face-swap-frontend
@@ -21,6 +45,8 @@ services:
     volumes:
       # 一次全掛載整個後端目錄
       - ./backend:/app
+    depends_on:
+      - model-downloader
     restart: unless-stopped
     deploy:
       resources:
