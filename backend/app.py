@@ -20,7 +20,8 @@ app = FastAPI(
     description="基於 InsightFace 的 AI 換臉 API 服務",
     version="1.0.0",
     docs_url="/api/docs",
-    redoc_url="/api/redoc"
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json"
 )
 
 # CORS 設定
@@ -32,7 +33,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 掛載靜態檔案服務
+# 確保必要目錄存在後再掛載靜態檔案服務
+ensure_directories()
 app.mount("/results", StaticFiles(directory="results"), name="results")
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 

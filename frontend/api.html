@@ -241,6 +241,7 @@
 
         <div class="nav-links">
             <a href="/api/health" target="_blank">💚 健康檢查</a>
+            <a href="/api/docs" target="_blank">⚡ Swagger 文檔（已修復）</a>
         </div>
 
         <!-- API 概覽 -->
@@ -260,10 +261,22 @@
                         </tr>
                     </thead>
                     <tbody>
+                        <tr style="background: #fff3cd;">
+                            <td><span class="method post">POST</span></td>
+                            <td><code class="endpoint">/api/swapper</code></td>
+                            <td><strong>【推薦】智能換臉 API</strong></td>
+                            <td>無</td>
+                        </tr>
                         <tr>
                             <td><span class="method post">POST</span></td>
                             <td><code class="endpoint">/api/face-swap</code></td>
-                            <td>執行 AI 換臉操作</td>
+                            <td>非同步換臉操作（返回 task_id）</td>
+                            <td>無</td>
+                        </tr>
+                        <tr>
+                            <td><span class="method get">GET</span></td>
+                            <td><code class="endpoint">/api/face-swap/status/{task_id}</code></td>
+                            <td>查詢任務處理狀態</td>
                             <td>無</td>
                         </tr>
                         <tr>
@@ -313,15 +326,123 @@
             </div>
         </div>
 
-        <!-- 換臉 API -->
+        <!-- 智能換臉 API -->
         <div class="api-section">
             <div class="section-header">
-                <h2>🎭 換臉 API</h2>
-                <p>核心的 AI 換臉功能</p>
+                <h2>🚀 智能換臉 API （推薦）</h2>
+                <p>新版智能 API，自動處理快慢響應，避免超時問題</p>
+            </div>
+            <div class="section-content">
+                <h3><span class="method post">POST</span> /api/swapper</h3>
+                <p><strong>推薦使用！</strong> 智能換臉 API 會自動判斷處理時間：</p>
+                <ul>
+                    <li>✨ <strong>快速完成</strong>（3秒內）→ 直接返回結果</li>
+                    <li>⏱️ <strong>需要更長時間</strong> → 返回 task_id 供查詢</li>
+                    <li>🎯 <strong>避免超時問題</strong>，提供更好的用戶體驗</li>
+                </ul>
+
+                <h4>請求參數</h4>
+                <table class="parameter-table">
+                    <thead>
+                        <tr>
+                            <th>參數名</th>
+                            <th>類型</th>
+                            <th>必填</th>
+                            <th>描述</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>file</code></td>
+                            <td>File</td>
+                            <td><span class="required">必填</span></td>
+                            <td>使用者上傳的照片檔案</td>
+                        </tr>
+                        <tr>
+                            <td><code>template_id</code></td>
+                            <td>String</td>
+                            <td><span class="required">必填</span></td>
+                            <td>模板 ID (1-6) 或 "custom"</td>  
+                        </tr>
+                        <tr>
+                            <td><code>template_file</code></td>
+                            <td>File</td>
+                            <td><span class="optional">選填</span></td>
+                            <td>自訂模板檔案（當 template_id="custom" 時）</td>
+                        </tr>
+                        <tr>
+                            <td><code>source_face_index</code></td>
+                            <td>Integer</td>
+                            <td><span class="optional">選填</span></td>
+                            <td>來源圖片中的臉部索引（預設: 0）</td>
+                        </tr>
+                        <tr>
+                            <td><code>target_face_index</code></td>
+                            <td>Integer</td>
+                            <td><span class="optional">選填</span></td>
+                            <td>模板圖片中的臉部索引（預設: 0）</td>
+                        </tr>
+                        <tr>
+                            <td><code>wait_time</code></td>
+                            <td>Integer</td>
+                            <td><span class="optional">選填</span></td>
+                            <td>最大等待時間，1-10秒（預設: 3）</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="example">
+                    <h4>📝 請求範例</h4>
+                    <div class="code-block">
+                        <pre># 使用預設模板
+curl -X POST "http://localhost:8882/api/swapper" \
+  -F "file=@user_photo.jpg" \
+  -F "template_id=1"
+
+# 使用自訂模板  
+curl -X POST "http://localhost:8882/api/swapper" \
+  -F "file=@user_photo.jpg" \
+  -F "template_id=custom" \
+  -F "template_file=@custom_template.jpg"</pre>
+                    </div>
+                </div>
+
+                <h4>回應格式</h4>
+                <p><span class="status-code status-200">200 OK</span> 快速完成：</p>
+                <div class="code-block">
+                    <pre>{
+  "success": true,
+  "completed": true,
+  "processing_time": "2.35s",
+  "result_url": "/results/result_abc123.jpg",
+  "message": "換臉處理完成！"
+}</pre>
+                </div>
+
+                <p><span class="status-code status-200">200 OK</span> 需要較長時間：</p>
+                <div class="code-block">
+                    <pre>{
+  "success": true,
+  "completed": false,
+  "processing": true,
+  "task_id": "12345678-1234-5678-9abc-123456789012",
+  "progress": 30,
+  "estimated_total_time": "20-30秒",
+  "polling_url": "/api/face-swap/status/12345678-1234-5678-9abc-123456789012"
+}</pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- 傳統換臉 API -->
+        <div class="api-section">
+            <div class="section-header">
+                <h2>🎭 傳統換臉 API</h2>
+                <p>原有的非同步換臉功能（需要輪詢狀態）</p>
             </div>
             <div class="section-content">
                 <h3><span class="method post">POST</span> /api/face-swap</h3>
-                <p>執行 AI 換臉操作，支援預設模板和自訂模板。</p>
+                <p>執行 AI 換臉操作，返回 task_id 需要後續查詢狀態。</p>
 
                 <h4>請求參數</h4>
                 <table class="parameter-table">
