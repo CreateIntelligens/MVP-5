@@ -295,11 +295,11 @@ function updateProcessButton() {
     elements.processBtn.disabled = !canProcess;
     
     if (canProcess) {
-        elements.processBtn.textContent = '🚀 開始換臉';
+        elements.processBtn.textContent = '🚀 開始處理';
     } else if (isProcessing) {
         elements.processBtn.textContent = '⏳ 處理中...';
     } else {
-        elements.processBtn.textContent = '🚀 開始換臉';
+        elements.processBtn.textContent = '🚀 開始處理';
     }
 }
 

@@ -1,5 +1,5 @@
 services:
-  # 模型下載服務
+  # 模型下載服務（一次性，完成後自動清理）
   model-downloader:
     build:
       context: .

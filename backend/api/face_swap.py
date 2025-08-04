@@ -480,3 +480,151 @@ async def cleanup_results(max_age_hours: int = 24):
             status_code=500,
             detail=f"清理檔案失敗：{str(e)}"
         )
+
+@router.post("/swapper")
+async def swapper(
+    file: UploadFile = File(..., description="使用者上傳的照片"),
+    template_id: str = Form(..., description="模板 ID"),
+    template_file: Optional[UploadFile] = File(None, description="自訂模板檔案"),
+    source_face_index: int = Form(0, description="來源臉部索引"),
+    target_face_index: int = Form(0, description="目標臉部索引"),
+    wait_time: Optional[int] = Form(3, description="最大等待時間（秒，1-10之間）")
+):
+    """
+    簡化版換臉 API - 智能處理模式
+    
+    - 如果處理快速完成（在 wait_time 秒內），直接返回結果
+    - 如果需要較長時間，返回 task_id 供後續查詢
+    - 避免超時問題，提供更好的使用者體驗
+    
+    Args:
+        file: 使用者上傳的照片檔案
+        template_id: 要使用的模板 ID (1-6) 或 "custom"
+        template_file: 自訂模板檔案（當 template_id="custom" 時使用）
+        source_face_index: 來源圖片中的臉部索引 (預設: 0)
+        target_face_index: 模板圖片中的臉部索引 (預設: 0)
+        wait_time: 最大等待時間，1-10秒 (預設: 3秒)
+    """
+    try:
+        # 驗證檔案
+        validate_file(file)
+        
+        # 讀取檔案內容
+        file_content = await file.read()
+        if not file_content:
+            raise HTTPException(status_code=400, detail="檔案內容為空")
+        
+        # 處理模板檔案
+        template_content = None
+        if template_id == "custom" and template_file:
+            validate_file(template_file)
+            template_content = await template_file.read()
+            if not template_content:
+                raise HTTPException(status_code=400, detail="模板檔案內容為空")
+        elif template_id != "custom" and template_id not in TEMPLATE_CONFIG["TEMPLATES"]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"無效的模板 ID: {template_id}，可用的模板 ID: {list(TEMPLATE_CONFIG['TEMPLATES'].keys())}"
+            )
+        
+        # 生成任務 ID
+        task_id = str(uuid.uuid4())
+        
+        # 初始化任務狀態
+        task_status[task_id] = {
+            "task_id": task_id,
+            "status": "processing",
+            "progress": 0,
+            "message": "開始處理...",
+            "template_id": template_id,
+            "created_at": datetime.now().isoformat(),
+            "result_url": None,
+            "template_name": None,
+            "template_description": None,
+            "error": None
+        }
+        
+        # 啟動背景處理任務
+        background_task = asyncio.create_task(
+            process_face_swap_task(
+                task_id,
+                file_content,
+                template_id,
+                template_content,
+                source_face_index,
+                target_face_index
+            )
+        )
+        
+        # 智能等待：在指定時間內等待完成
+        start_time = asyncio.get_event_loop().time()
+        # 處理 wait_time 參數，確保在合理範圍內
+        if wait_time is None:
+            wait_time = 3
+        max_wait = min(max(wait_time, 1), 10)  # 限制在 1-10 秒之間
+        
+        while True:
+            current_time = asyncio.get_event_loop().time()
+            elapsed = current_time - start_time
+            
+            # 檢查是否超時
+            if elapsed >= max_wait:
+                break
+            
+            # 檢查任務狀態
+            current_status = task_status.get(task_id, {})
+            status = current_status.get("status", "processing")
+            
+            if status == "completed":
+                # 處理完成，直接返回結果
+                logger.info(f"任務 {task_id} 快速完成，耗時 {elapsed:.2f}秒")
+                return {
+                    "success": True,
+                    "completed": True,
+                    "processing_time": f"{elapsed:.2f}s",
+                    "task_id": task_id,
+                    "result_url": current_status.get("result_url"),
+                    "template_name": current_status.get("template_name"),
+                    "template_description": current_status.get("template_description"),
+                    "message": "換臉處理完成！"
+                }
+            elif status == "failed":
+                # 處理失敗
+                error_msg = current_status.get("error", "未知錯誤")
+                logger.error(f"任務 {task_id} 快速失敗：{error_msg}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"換臉處理失敗：{error_msg}"
+                )
+            
+            # 短暫等待後再檢查
+            await asyncio.sleep(0.1)
+        
+        # 超時了，返回任務 ID 供後續查詢
+        current_status = task_status.get(task_id, {})
+        progress = current_status.get("progress", 0)
+        message = current_status.get("message", "正在處理中...")
+        
+        logger.info(f"任務 {task_id} 需要更長時間處理，當前進度：{progress}%")
+        
+        return {
+            "success": True,
+            "completed": False,
+            "processing": True,
+            "task_id": task_id,
+            "progress": progress,
+            "message": message,
+            "estimated_total_time": "20-30秒",
+            "polling_url": f"/api/face-swap/status/{task_id}",
+            "note": "處理時間較長，請使用 task_id 查詢狀態或等待完成"
+        }
+        
+    except HTTPException:
+        # 重新拋出 HTTP 異常
+        raise
+    except Exception as e:
+        logger.error(f"簡化換臉 API 失敗：{e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"處理失敗：{str(e)}"
+        )

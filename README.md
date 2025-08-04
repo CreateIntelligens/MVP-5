@@ -8,8 +8,6 @@
 - **多臉部支援**：支援多人照片中指定臉部換臉
 - **自訂模板**：支援上傳自訂模板圖片
 - **預設模板**：提供 6 個預設風格模板
-- **即時預覽**：上傳後立即預覽效果
-- **自動清理**：智能檔案管理，防止儲存空間爆滿
 
 ## 🚀 快速開始
 
@@ -30,12 +28,23 @@ docker-compose up -d
 
 ### 📦 自動模型下載
 
-Docker 容器會在首次建置時自動下載 AI 模型檔案 `inswapper_128.onnx`（529MB）：
+Docker 容器會在首次建置時自動下載 AI 模型檔案 `inswapper_128.onnx`（~256MB）：
 
 - **主要來源**：Hugging Face
-- **備用來源**：GitHub Releases
+- **備用來源**：GitHub Releases  
 - **自動重試**：如果主要來源失敗，會自動嘗試備用來源
+- **文件驗證**：自動檢查文件大小和 ONNX 格式
+- **智能清理**：下載完成後，模型下載容器自動退出清理
 - **無需手動操作**：完全自動化，無需額外步驟
+
+#### 🔄 模型下載流程
+
+1. **啟動** `docker-compose up -d` 
+2. **創建** 模型下載容器 → 開始下載
+3. **驗證** 檔案完整性和格式
+4. **退出** 下載容器自動清理 ✅
+5. **啟動** 後端服務載入模型
+6. **就緒** API 服務可用 🚀
 
 **如果自動下載失敗，可以使用以下備用方案：**
 
@@ -88,18 +97,89 @@ python -m http.server 8882
 
 ## 📋 API 文檔
 
-詳細的 API 文檔請訪問：[http://localhost:8882/faceswap/api](http://localhost:8882/faceswap/api)
+詳細的 API 文檔請訪問：
+- **自定義文檔**：[http://localhost:8882/faceswap/api](http://localhost:8882/faceswap/api)
+- **Swagger UI**：[http://localhost:8882/api/docs](http://localhost:8882/api/docs) 
 
 ### 主要 API 端點
 
 | 方法 | 端點 | 描述 |
 |------|------|------|
-| POST | `/api/face-swap` | 執行換臉操作 |
+| **POST** | `/api/swapper` | **【推薦】智能換臉 API** |
+| POST | `/api/face-swap` | 非同步換臉操作（返回 task_id） |
 | POST | `/api/validate-image` | 驗證圖片並返回臉部資訊 |
+| GET | `/api/face-swap/status/{task_id}` | 查詢任務處理狀態 |
 | GET | `/api/templates` | 獲取可用模板列表 |
 | GET | `/api/health` | 健康檢查 |
 | POST | `/api/cleanup` | 手動執行檔案清理 |
 | GET | `/api/storage/stats` | 獲取儲存統計資訊 |
+
+### 🚀 推薦使用：智能換臉 API
+
+**新增的 `/api/swapper` 是最佳選擇**，它會：
+- 快速完成（3秒內）→ 直接返回結果 ✨
+- 需要更長時間 → 返回 task_id 供查詢 ⏱️
+- 避免超時問題，提供更好的用戶體驗 🎯
+
+#### 📝 API 使用範例
+
+**方法 1: 使用預設模板**
+```bash
+curl -X POST http://localhost:8882/api/swapper \
+  -F "file=@your-photo.jpg" \
+  -F "template_id=1"
+```
+
+**方法 2: 使用自訂模板**
+```bash
+curl -X POST http://localhost:8882/api/swapper \
+  -F "file=@your-photo.jpg" \
+  -F "template_id=custom" \
+  -F "template_file=@your-template.jpg"
+```
+
+**可選參數：**
+- `source_face_index`: 來源圖片臉部索引 (預設: 0)
+- `target_face_index`: 目標圖片臉部索引 (預設: 0)  
+- `wait_time`: 最大等待時間，1-10秒 (預設: 3)
+
+#### 📱 Postman 設定
+
+```
+Method: POST
+URL: http://localhost:8882/api/swapper
+
+Body (form-data):
+  - file: [選擇你的照片] (type: File)
+  - template_id: 1 (type: Text) # 或 "custom"
+  - template_file: [選擇模板圖片] (type: File, 僅當 template_id="custom")
+```
+
+#### 🔄 API 回應格式
+
+**快速完成（推薦情況）：**
+```json
+{
+  "success": true,
+  "completed": true,
+  "processing_time": "2.35s",
+  "result_url": "/results/result_abc123.jpg",
+  "message": "換臉處理完成！"
+}
+```
+
+**需要較長時間：**
+```json
+{
+  "success": true,
+  "completed": false,
+  "processing": true,
+  "task_id": "12345678-1234-5678-9abc-123456789012",
+  "progress": 30,
+  "estimated_total_time": "20-30秒",
+  "polling_url": "/api/face-swap/status/12345678-1234-5678-9abc-123456789012"
+}
+```
 
 ## 🛠️ 技術架構
 
@@ -125,16 +205,18 @@ python -m http.server 8882
 ai-avatar-studio/
 ├── frontend/                 # 前端代碼
 │   ├── index.html           # 主頁面
+│   ├── api.html            # API 文檔頁面
+│   ├── examples.html       # 使用範例頁面
 │   ├── assets/
-│   │   ├── css/main.css     # 樣式檔案
+│   │   ├── css/main.css     # 樣式檔案（含 hover 效果）
 │   │   ├── js/main.js       # 主要邏輯
 │   │   └── images/          # 圖片資源
 │   └── config.js            # 前端配置
 ├── backend/                 # 後端代碼
-│   ├── app.py              # FastAPI 主應用
+│   ├── app.py              # FastAPI 主應用（含 Swagger 配置）
 │   ├── requirements.txt    # Python 依賴
 │   ├── api/                # API 路由
-│   │   ├── face_swap.py    # 換臉 API
+│   │   ├── face_swap.py    # 換臉 API（含智能 API）
 │   │   └── templates.py    # 模板 API
 │   ├── core/               # 核心邏輯
 │   │   ├── config.py       # 配置管理
@@ -146,7 +228,7 @@ ai-avatar-studio/
 ├── docker-compose.yml      # Docker Compose 配置
 ├── Dockerfile             # Docker 映像配置
 ├── nginx.conf             # Nginx 配置
-└── README.md              # 專案說明
+├── README.md              # 專案說明
 ```
 
 ## ⚙️ 配置說明
@@ -221,13 +303,16 @@ docker-compose down
 ### 常見問題
 
 **Q: 換臉失敗，提示找不到臉部**
-A: 確保上傳的圖片清晰，臉部正面且光線充足
+A: 確保上傳的圖片清晰，臉部正面且光線充足。可以先使用 `/api/validate-image` 檢查圖片
 
 **Q: 處理時間過長**
-A: 檢查圖片大小，建議使用小於 5MB 的圖片
+A: 首次使用需要模型初始化（約 1-2 分鐘）。後續使用會更快。建議使用小於 5MB 的圖片
 
-**Q: Docker 啟動失敗**
-A: 檢查端口是否被佔用，確保 Docker 服務正常運行
+**Q: 多人照片換臉效果不對**
+A: 調整 `source_face_index` 和 `target_face_index` 參數，系統從左到右、從上到下編號臉部
+
+**Q: 模型下載失敗**
+A: 檢查網路連接，可以手動下載模型檔案到 `backend/models/` 目錄
 
 ### 日誌查看
 
@@ -270,15 +355,3 @@ curl -X POST http://localhost:8882/api/cleanup
 # 或訪問 API 文檔進行操作
 http://localhost:8882/faceswap/api
 ```
-
-## 📄 授權
-
-本專案採用 MIT 授權條款。
-
-## 🤝 貢獻
-
-歡迎提交 Issue 和 Pull Request 來改進這個專案。
-
----
-
-**注意**：本專案僅供學習和研究使用，請勿用於非法用途。

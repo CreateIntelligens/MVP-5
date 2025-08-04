@@ -502,7 +502,8 @@ body {
 .templates-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
+    gap: 15px;
+    padding: 10px;
 }
 
 .template-item {
@@ -515,13 +516,21 @@ body {
 }
 
 .template-item:hover {
-    transform: scale(1.03);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    transform: scale(1.15);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+    z-index: 10;
 }
 
 .template-item.selected {
     border-color: #667eea;
-    box-shadow: 0 0 15px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+    transform: scale(1.05);
+}
+
+.template-item.selected:hover {
+    transform: scale(1.18);
+    border-color: #667eea;
+    box-shadow: 0 8px 30px rgba(102, 126, 234, 0.4);
 }
 
 .template-item input[type="radio"] {
@@ -535,20 +544,21 @@ body {
 
 .template-preview {
     width: 100%;
-    height: 60px;
-    border-radius: 6px;
+    height: 80px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
     font-weight: bold;
-    font-size: 0.7em;
+    font-size: 0.8em;
     position: relative;
     overflow: hidden;
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
     background: #f8f9fa;
+    transition: all 0.3s ease;
 }
 
 .template-preview img {
@@ -565,13 +575,42 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(45deg, rgba(255,255,255,0.1), rgba(255,255,255,0.3));
+    background: linear-gradient(45deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.2));
     opacity: 0;
     transition: opacity 0.3s ease;
+    border-radius: 8px;
 }
 
 .template-item:hover .template-preview::before {
     opacity: 1;
+}
+
+.template-item:hover .template-preview {
+    box-shadow: inset 0 0 20px rgba(102, 126, 234, 0.3);
+}
+
+.template-preview::after {
+    content: '🔍';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.5em;
+    opacity: 0;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(5px);
+}
+
+.template-item:hover .template-preview::after {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.1);
 }
 
 .template-name {
@@ -1039,6 +1078,15 @@ body {
     
     .templates-grid {
         grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+    
+    .template-item:hover {
+        transform: scale(1.1);
+    }
+    
+    .template-item.selected:hover {
+        transform: scale(1.15);
     }
     
     .header h1 {
@@ -1058,6 +1106,19 @@ body {
 @media (max-width: 480px) {
     .templates-grid {
         grid-template-columns: 1fr;
+        gap: 25px;
+    }
+    
+    .template-item:hover {
+        transform: scale(1.08);
+    }
+    
+    .template-item.selected:hover {
+        transform: scale(1.12);
+    }
+    
+    .template-preview {
+        height: 100px;
     }
     
     .header h1 {
@@ -1103,4 +1164,226 @@ body {
 
 .result-section {
     animation-delay: 0.3s;
+}
+
+/* 使用說明頁面樣式 */
+.usage-steps {
+    margin-bottom: 40px;
+}
+
+.steps-title {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.steps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.step-item {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.step-item:hover {
+    transform: translateY(-5px);
+}
+
+.step-number {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2em;
+    margin: 0 auto 15px;
+}
+
+.step-content h3 {
+    font-size: 1.1em;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.step-content p {
+    font-size: 0.9em;
+    color: #666;
+    line-height: 1.5;
+}
+
+.tips-section {
+    margin-bottom: 40px;
+}
+
+.tips-title {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.tips-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.tip-item {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    transition: transform 0.3s ease;
+}
+
+.tip-item:hover {
+    transform: translateY(-3px);
+}
+
+.tip-icon {
+    font-size: 2em;
+    flex-shrink: 0;
+}
+
+.tip-content h4 {
+    font-size: 1em;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.tip-content p {
+    font-size: 0.9em;
+    color: #666;
+    line-height: 1.4;
+}
+
+.faq-section {
+    margin-bottom: 40px;
+}
+
+.faq-title {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.faq-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.faq-item {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 3px 15px rgba(0,0,0,0.1);
+}
+
+.faq-question {
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.faq-answer {
+    color: #666;
+    line-height: 1.5;
+}
+
+/* API 文檔連結區域 */
+.api-docs-section {
+    margin-bottom: 40px;
+}
+
+.api-docs-title {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.api-docs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.api-doc-link {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.api-doc-link:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    border-color: #667eea;
+}
+
+.api-doc-icon {
+    font-size: 2.5em;
+    flex-shrink: 0;
+}
+
+.api-doc-content h4 {
+    font-size: 1.1em;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.api-doc-content p {
+    font-size: 0.9em;
+    color: #666;
+    line-height: 1.4;
+    margin: 0;
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+    .steps-grid,
+    .tips-grid,
+    .api-docs-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .step-item,
+    .tip-item {
+        padding: 15px;
+    }
+    
+    .tips-title,
+    .steps-title,
+    .faq-title {
+        font-size: 1.3em;
+    }
 }

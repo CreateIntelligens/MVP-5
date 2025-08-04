@@ -1,3 +1,5 @@
+.claude/
+
 # 處理結果檔案（不需要版本控制）
 backend/results/*
 backend/uploads/*

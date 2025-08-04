@@ -17,8 +17,8 @@
                 <div class="header-right">
                     <!-- 分頁切換 -->
                     <div class="tab-navigation">
-                        <button class="tab-btn active" data-tab="main">🚀 開始換臉</button>
-                        <button class="tab-btn" data-tab="examples">📖 使用範例</button>
+                        <button class="tab-btn active" data-tab="main">🎭 換臉工具</button>
+                        <button class="tab-btn" data-tab="examples">📖 使用說明</button>
                     </div>
                 </div>
             </div>
@@ -109,7 +109,7 @@
         <!-- 控制按鈕 -->
         <div class="controls">
             <button id="processBtn" class="process-btn" disabled>
-                🚀 開始換臉
+                🚀 開始處理
             </button>
         </div>
         
@@ -133,110 +133,131 @@
         <div class="message" id="message"></div>
         </div>
         
-        <!-- 範例分頁 -->
+        <!-- 使用說明分頁 -->
         <div class="tab-content" id="examples-tab" style="display: none;">
             <div class="examples-container">
-                <div class="example-grid">
-                    <!-- 範例 1：單人換臉 -->
-                    <div class="example-item">
-                        <div class="example-title">📸 單人照片換臉</div>
-                        <div class="example-images">
-                            <div class="example-image">
-                                <div class="example-placeholder">你的照片<br>（臉部編號：1）</div>
-                            </div>
-                            <div class="arrow">→</div>
-                            <div class="example-image">
-                                <div class="example-placeholder">選擇模板<br>（臉部編號：1）</div>
-                            </div>
-                            <div class="arrow">→</div>
-                            <div class="example-image">
-                                <div class="example-placeholder">換臉結果</div>
+                <!-- 使用步驟 -->
+                <div class="usage-steps">
+                    <div class="steps-title">📝 使用步驟</div>
+                    <div class="steps-grid">
+                        <div class="step-item">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h3>📸 上傳你的照片</h3>
+                                <p>選擇一張包含你臉部的清晰照片<br>支援 JPG、PNG 格式，最大 10MB</p>
                             </div>
                         </div>
-                        <div class="example-description">
-                            最簡單的情況：你的照片只有一張臉，模板也只有一張臉。<br>
-                            設定：來源臉部編號 = 1，目標臉部編號 = 1
-                        </div>
-                    </div>
-                    
-                    <!-- 範例 2：多人照片選擇特定臉部 -->
-                    <div class="example-item">
-                        <div class="example-title">👥 多人照片換臉</div>
-                        <div class="example-images">
-                            <div class="example-image">
-                                <div class="example-placeholder">多人照片<br>（選擇第 2 張臉）</div>
-                            </div>
-                            <div class="arrow">→</div>
-                            <div class="example-image">
-                                <div class="example-placeholder">選擇模板<br>（臉部編號：1）</div>
-                            </div>
-                            <div class="arrow">→</div>
-                            <div class="example-image">
-                                <div class="example-placeholder">換臉結果</div>
+                        
+                        <div class="step-item">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h3>🎭 選擇模板</h3>
+                                <p>從預設模板中選擇一個<br>或上傳自己的模板圖片</p>
                             </div>
                         </div>
-                        <div class="example-description">
-                            當你的照片有多人時，可以選擇要換哪一張臉。<br>
-                            設定：來源臉部編號 = 2（右邊的人），目標臉部編號 = 1
-                        </div>
-                    </div>
-                    
-                    <!-- 範例 3：模板多人選擇 -->
-                    <div class="example-item">
-                        <div class="example-title">🎭 模板多人選擇</div>
-                        <div class="example-images">
-                            <div class="example-image">
-                                <div class="example-placeholder">你的照片<br>（臉部編號：1）</div>
-                            </div>
-                            <div class="arrow">→</div>
-                            <div class="example-image">
-                                <div class="example-placeholder">多人模板<br>（選擇第 3 張臉）</div>
-                            </div>
-                            <div class="arrow">→</div>
-                            <div class="example-image">
-                                <div class="example-placeholder">換臉結果</div>
+                        
+                        <div class="step-item">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h3>🎯 設定臉部編號</h3>
+                                <p>如果照片有多張臉，選擇要換的是第幾張<br>系統會從左到右自動編號</p>
                             </div>
                         </div>
-                        <div class="example-description">
-                            當模板有多人時，可以選擇要替換哪一張臉。<br>
-                            設定：來源臉部編號 = 1，目標臉部編號 = 3（右邊的人）
-                        </div>
-                    </div>
-                    
-                    <!-- 範例 4：複雜多人場景 -->
-                    <div class="example-item">
-                        <div class="example-title">👨‍👩‍👧‍👦 複雜多人場景</div>
-                        <div class="example-images">
-                            <div class="example-image">
-                                <div class="example-placeholder">家庭照片<br>（4 人，選第 2 人）</div>
+                        
+                        <div class="step-item">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h3>🚀 開始處理</h3>
+                                <p>點擊「開始處理」按鈕<br>等待 AI 完成換臉，通常需要 10-30 秒</p>
                             </div>
-                            <div class="arrow">→</div>
-                            <div class="example-image">
-                                <div class="example-placeholder">運動模板<br>（臉部編號：1）</div>
-                            </div>
-                            <div class="arrow">→</div>
-                            <div class="example-image">
-                                <div class="example-placeholder">運動風換臉結果</div>
-                            </div>
-                        </div>
-                        <div class="example-description">
-                            處理複雜的多人場景，精確選擇要換的臉部。<br>
-                            設定：來源臉部編號 = 2（家庭照中的媽媽），目標臉部編號 = 1
                         </div>
                     </div>
                 </div>
                 
-                <!-- 使用技巧 -->
+                <!-- 重要提醒 -->
                 <div class="tips-section">
-                    <div class="tips-title">💡 使用技巧</div>
-                    <ul class="tips-list">
-                        <li><strong>臉部編號順序</strong>：系統會從左到右、從上到下自動編號臉部</li>
-                        <li><strong>清晰度很重要</strong>：上傳清晰的正面照片，效果會更好</li>
-                        <li><strong>多試幾次</strong>：如果效果不理想，可以調整臉部編號重新嘗試</li>
-                        <li><strong>支援最多 20 張臉</strong>：可以處理大型團體照片</li>
-                        <li><strong>自訂模板</strong>：除了預設模板，也可以上傳自己的模板圖片</li>
-                        <li><strong>下載高品質</strong>：處理完成後可以下載高品質的結果圖片</li>
-                    </ul>
+                    <div class="tips-title">⚠️ 重要提醒</div>
+                    <div class="tips-grid">
+                        <div class="tip-item">
+                            <div class="tip-icon">📐</div>
+                            <div class="tip-content">
+                                <h4>臉部編號規則</h4>
+                                <p>系統會從左到右、從上到下自動為照片中的臉部編號</p>
+                            </div>
+                        </div>
+                        
+                        <div class="tip-item">
+                            <div class="tip-icon">💡</div>
+                            <div class="tip-content">
+                                <h4>最佳效果建議</h4>
+                                <p>使用清晰的正面照片，光線充足，臉部完整可見</p>
+                            </div>
+                        </div>
+                        
+                        <div class="tip-item">
+                            <div class="tip-icon">🔄</div>
+                            <div class="tip-content">
+                                <h4>多次嘗試</h4>
+                                <p>如果結果不理想，可以調整臉部編號或更換模板重試</p>
+                            </div>
+                        </div>
+                        
+                        <div class="tip-item">
+                            <div class="tip-icon">⏱️</div>
+                            <div class="tip-content">
+                                <h4>處理時間</h4>
+                                <p>通常需要 10-30 秒，複雜圖片可能需要更長時間</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- API 文檔連結 -->
+                <div class="api-docs-section">
+                    <div class="api-docs-title">🔗 相關資源</div>
+                    <div class="api-docs-grid">
+                        <a href="/faceswap/api" target="_blank" class="api-doc-link">
+                            <div class="api-doc-icon">📖</div>
+                            <div class="api-doc-content">
+                                <h4>API 使用文檔</h4>
+                                <p>詳細的 API 端點說明和使用範例</p>
+                            </div>
+                        </a>
+                        
+                        <a href="/api/docs" target="_blank" class="api-doc-link">
+                            <div class="api-doc-icon">⚡</div>
+                            <div class="api-doc-content">
+                                <h4>Swagger API 文檔</h4>
+                                <p>互動式 API 測試和技術文檔</p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 常見問題 -->
+                <div class="faq-section">
+                    <div class="faq-title">❓ 常見問題</div>
+                    <div class="faq-list">
+                        <div class="faq-item">
+                            <div class="faq-question">Q: 為什麼無法偵測到臉部？</div>
+                            <div class="faq-answer">A: 請確保照片清晰、光線充足，臉部正面且完整可見。避免過度模糊或側臉照片。</div>
+                        </div>
+                        
+                        <div class="faq-item">
+                            <div class="faq-question">Q: 可以同時換多張臉嗎？</div>
+                            <div class="faq-answer">A: 目前一次只能換一張臉。如果需要換多張臉，請分別進行多次處理。</div>
+                        </div>
+                        
+                        <div class="faq-item">
+                            <div class="faq-question">Q: 處理結果會保存多久？</div>
+                            <div class="faq-answer">A: 處理結果會保存 24 小時，請及時下載保存。</div>
+                        </div>
+                        
+                        <div class="faq-item">
+                            <div class="faq-question">Q: 支援哪些圖片格式？</div>
+                            <div class="faq-answer">A: 支援 JPG、JPEG、PNG、WebP 格式，檔案大小不超過 10MB。</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
