@@ -55,36 +55,48 @@ TEMPLATE_CONFIG = {
             "id": "1",
             "name": "模板 1",
             "description": "預設模板",
+            "category": "默認",
+            "gender": "unisex",
             "path": "./models/templates/step01.jpg"
         },
         "2": {
             "id": "2", 
             "name": "模板 2",
             "description": "預設模板",
+            "category": "默認",
+            "gender": "unisex",
             "path": "./models/templates/step02.jpg"
         },
         "3": {
             "id": "3",
             "name": "模板 3", 
             "description": "預設模板",
+            "category": "默認",
+            "gender": "unisex",
             "path": "./models/templates/step03.jpg"
         },
         "4": {
             "id": "4",
             "name": "模板 4",
-            "description": "預設模板", 
+            "description": "預設模板",
+            "category": "默認",
+            "gender": "unisex", 
             "path": "./models/templates/step04.jpg"
         },
         "5": {
             "id": "5",
             "name": "模板 5",
             "description": "預設模板",
+            "category": "默認",
+            "gender": "unisex",
             "path": "./models/templates/step05.jpg"
         },
         "6": {
             "id": "6",
             "name": "模板 6",
             "description": "預設模板",
+            "category": "默認",
+            "gender": "unisex",
             "path": "./models/templates/step06.jpg"
         }
     }
