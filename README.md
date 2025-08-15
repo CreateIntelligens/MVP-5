@@ -105,7 +105,7 @@ python -m http.server 8882
 
 | 方法 | 端點 | 描述 |
 |------|------|------|
-| **POST** | `/api/swapper` | **【推薦】智能換臉 API** |
+| **POST** | `/api/swapper` | **同步換臉 API** |
 | POST | `/api/face-swap` | 非同步換臉操作（返回 task_id） |
 | POST | `/api/validate-image` | 驗證圖片並返回臉部資訊 |
 | GET | `/api/face-swap/status/{task_id}` | 查詢任務處理狀態 |
@@ -114,12 +114,12 @@ python -m http.server 8882
 | POST | `/api/cleanup` | 手動執行檔案清理 |
 | GET | `/api/storage/stats` | 獲取儲存統計資訊 |
 
-### 🚀 推薦使用：同步換臉 API
+### 🚀 同步換臉 API
 
-**新增的 `/api/swapper` 是最佳選擇**，特點：
-- 同步處理，直接返回結果 ✨
-- 無需輪詢，等待處理完成 ⏱️
-- 簡單易用，最佳用戶體驗 🎯
+**`/api/swapper` 端點特點：**
+- 同步處理，直接返回結果
+- 無需輪詢，即時回應
+- 簡化開發流程
 
 #### 📝 API 使用範例
 
@@ -130,7 +130,14 @@ curl -X POST http://localhost:8882/api/swapper \
   -F "template_id=1"
 ```
 
-**方法 2: 使用自訂模板**
+**方法 2: 使用自訂模板（自動判斷）**
+```bash
+curl -X POST http://localhost:8882/api/swapper \
+  -F "file=@your-photo.jpg" \
+  -F "template_file=@your-template.jpg"
+```
+
+**方法 3: 明確指定為自訂模板**
 ```bash
 curl -X POST http://localhost:8882/api/swapper \
   -F "file=@your-photo.jpg" \
