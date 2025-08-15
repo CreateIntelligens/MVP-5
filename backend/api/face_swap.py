@@ -122,7 +122,7 @@ async def process_face_swap_task(
         task_status[task_id].update({
             "status": "completed",
             "progress": 100,
-            "message": "換臉處理完成！",
+            "message": "換臉處理完成",
             "result_url": result_url,
             "template_id": template_id,
             "template_name": template_name,
@@ -148,20 +148,33 @@ async def process_face_swap_task(
 async def swap_face(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(..., description="使用者上傳的照片"),
-    template_id: str = Form(..., description="模板 ID"),
+    template_id: Optional[str] = Form(None, description="模板 ID"),
     template_file: Optional[UploadFile] = File(None, description="自訂模板檔案"),
     source_face_index: int = Form(0, description="來源臉部索引"),
     target_face_index: int = Form(0, description="目標臉部索引")
 ):
     """
-    提交換臉任務（非同步處理）
+    非同步換臉任務提交
+    
+    提交換臉任務至後台處理佇列，返回任務 ID 供狀態查詢
     
     - **file**: 使用者上傳的照片檔案
-    - **template_id**: 要使用的模板 ID (1-6)
+    - **template_id**: 模板 ID (1-6)，可選參數
+    - **template_file**: 自訂模板檔案，可選參數
     - **source_face_index**: 來源圖片中的臉部索引 (預設: 0)
     - **target_face_index**: 模板圖片中的臉部索引 (預設: 0)
     """
     try:
+        # 自動判斷使用自訂模板還是預設模板
+        if template_file and template_file.filename:
+            template_id = "custom"
+        elif not template_id:
+            # 如果都沒有提供，拋出錯誤
+            raise HTTPException(
+                status_code=400, 
+                detail="請提供 template_id 或上傳 template_file"
+            )
+            
         # 驗證檔案
         validate_file(file)
         
@@ -485,24 +498,34 @@ async def cleanup_results(max_age_hours: int = 24):
 @router.post("/swapper")
 async def swapper(
     file: UploadFile = File(..., description="使用者上傳的照片"),
-    template_id: str = Form(..., description="模板 ID"),
+    template_id: Optional[str] = Form(None, description="模板 ID"),
     template_file: Optional[UploadFile] = File(None, description="自訂模板檔案"),
     source_face_index: int = Form(0, description="來源臉部索引"),
     target_face_index: int = Form(0, description="目標臉部索引")
 ):
     """
-    換臉 API - 直接處理模式
+    同步換臉 API
     
-    直接處理並返回結果，不需要輪詢
+    實時處理換臉請求並直接返回結果
     
     Args:
         file: 使用者上傳的照片檔案
-        template_id: 要使用的模板 ID (1-6) 或 "custom"
-        template_file: 自訂模板檔案（當 template_id="custom" 時使用）
+        template_id: 模板 ID (1-6)，可選參數
+        template_file: 自訂模板檔案，可選參數
         source_face_index: 來源圖片中的臉部索引 (預設: 0)
         target_face_index: 模板圖片中的臉部索引 (預設: 0)
     """
     try:
+        # 自動判斷使用自訂模板還是預設模板
+        if template_file and template_file.filename:
+            template_id = "custom"
+        elif not template_id:
+            # 如果都沒有提供，拋出錯誤
+            raise HTTPException(
+                status_code=400, 
+                detail="請提供 template_id 或上傳 template_file"
+            )
+            
         # 驗證檔案
         validate_file(file)
         
@@ -573,7 +596,7 @@ async def swapper(
             "template_name": template_name,
             "template_description": template_description,
             "processing_time": f"{processing_time:.2f}s",
-            "message": "換臉處理完成！"
+            "message": "換臉處理完成"
         }
         
     except HTTPException:

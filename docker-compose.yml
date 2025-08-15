@@ -117,6 +117,7 @@ services:
     environment:
       - PYTHONPATH=/app
       - ENVIRONMENT=development
+    privileged: true
     # 使用開發模式啟動命令，支援自動重載
     command: ["python", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "3001", "--reload"]
 

@@ -1,12 +1,37 @@
-# 使用 Python 3.9 slim 基礎映像
-FROM python:3.9-slim
+# 使用 Ubuntu 20.04 基礎映像，相容性更好
+FROM ubuntu:20.04
+
+# 設定時區避免互動式安裝
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Taipei
+
+# 安裝 Python 3.9 和系統依賴
+RUN apt-get update && apt-get install -y \
+    python3.9 \
+    python3.9-distutils \
+    python3.9-dev \
+    libgl1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    wget \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 安裝 pip
+RUN curl https://bootstrap.pypa.io/get-pip.py | python3.9
+
+# 設定 Python 別名
+RUN ln -s /usr/bin/python3.9 /usr/bin/python
 
 # 設定工作目錄
 WORKDIR /app
 
 # 安裝系統依賴
 RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
