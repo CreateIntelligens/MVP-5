@@ -12,6 +12,7 @@ from typing import Optional
 from datetime import datetime
 import asyncio
 import cv2
+import time
 
 from core.face_processor import get_face_processor, cleanup_old_results
 from core.config import UPLOAD_CONFIG, TEMPLATE_CONFIG, get_template_path, RESULTS_DIR
@@ -25,6 +26,12 @@ router = APIRouter()
 
 # 任務狀態儲存（生產環境應使用 Redis 或資料庫）
 task_status = {}
+
+# 請求佇列管理 (防止記憶體爆炸)
+import asyncio
+processing_semaphore = asyncio.Semaphore(2)  # 同時最多處理2個請求
+request_queue_size = 0
+MAX_QUEUE_SIZE = 10
 
 def validate_file(file: UploadFile) -> None:
     """驗證上傳的檔案"""
