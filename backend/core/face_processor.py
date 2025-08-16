@@ -34,11 +34,25 @@ class FaceProcessor:
             # 確保 InsightFace 版本
             assert insightface.__version__ >= '0.7', f"需要 InsightFace 0.7+，目前版本：{insightface.__version__}"
             
-            # 初始化臉部分析模型
+            # 初始化臉部分析模型 (針對低效能硬體優化)
             self.face_app = FaceAnalysis(name=MODEL_CONFIG["FACE_ANALYSIS_MODEL"])
+            
+            # 根據可用記憶體調整檢測尺寸
+            import psutil
+            available_memory = psutil.virtual_memory().available / (1024**3)  # GB
+            
+            if available_memory < 2:
+                detection_size = (320, 320)  # 低記憶體
+                logger.info("低記憶體模式：使用較小的檢測尺寸")
+            elif available_memory < 4:
+                detection_size = (480, 480)  # 中等記憶體
+                logger.info("中等記憶體模式：使用標準檢測尺寸")
+            else:
+                detection_size = MODEL_CONFIG["DETECTION_SIZE"]  # 高記憶體
+            
             self.face_app.prepare(
                 ctx_id=MODEL_CONFIG["CTX_ID"], 
-                det_size=MODEL_CONFIG["DETECTION_SIZE"]
+                det_size=detection_size
             )
             
             # 初始化換臉模型
