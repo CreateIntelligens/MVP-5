@@ -11,11 +11,35 @@ import os
 from pathlib import Path
 from typing import Optional, Tuple, Union
 import logging
+import subprocess
+import sys
 
 from .config import MODEL_CONFIG, get_model_path, RESULTS_DIR
 
 # 設定日誌
 logger = logging.getLogger(__name__)
+
+def check_gpu_availability():
+    """檢查GPU是否可用"""
+    try:
+        import onnxruntime as ort
+        # 檢查ONNX Runtime GPU支援
+        gpu_providers = [provider for provider in ort.get_available_providers() 
+                        if 'CUDA' in provider or 'GPU' in provider]
+        
+        if gpu_providers:
+            logger.info(f"檢測到GPU Provider: {gpu_providers}")
+            return True, gpu_providers[0]
+        else:
+            logger.info("未檢測到GPU Provider，將使用CPU")
+            return False, 'CPUExecutionProvider'
+            
+    except ImportError:
+        logger.warning("ONNX Runtime 未安裝，將使用CPU")
+        return False, 'CPUExecutionProvider'
+    except Exception as e:
+        logger.warning(f"GPU檢測失敗: {e}，將使用CPU")
+        return False, 'CPUExecutionProvider'
 
 class FaceProcessor:
     """臉部處理器"""
@@ -34,7 +58,19 @@ class FaceProcessor:
             # 確保 InsightFace 版本
             assert insightface.__version__ >= '0.7', f"需要 InsightFace 0.7+，目前版本：{insightface.__version__}"
             
-            # 初始化臉部分析模型 (針對低效能硬體優化)
+            # 檢查GPU可用性
+            gpu_available, provider = check_gpu_availability()
+            self.gpu_available = gpu_available
+            
+            # 設定計算設備
+            if gpu_available:
+                ctx_id = 0  # GPU
+                logger.info("使用GPU模式")
+            else:
+                ctx_id = -1  # CPU
+                logger.info("使用CPU模式")
+            
+            # 初始化臉部分析模型
             self.face_app = FaceAnalysis(name=MODEL_CONFIG["FACE_ANALYSIS_MODEL"])
             
             # 根據可用記憶體調整檢測尺寸
@@ -51,7 +87,7 @@ class FaceProcessor:
                 detection_size = MODEL_CONFIG["DETECTION_SIZE"]  # 高記憶體
             
             self.face_app.prepare(
-                ctx_id=MODEL_CONFIG["CTX_ID"], 
+                ctx_id=ctx_id, 
                 det_size=detection_size
             )
             
@@ -68,11 +104,61 @@ class FaceProcessor:
                     download_zip=True
                 )
             
-            logger.info("AI 模型載入完成！")
+            logger.info(f"AI 模型載入完成！(使用{'GPU' if gpu_available else 'CPU'}模式)")
             
         except Exception as e:
-            logger.error(f"模型初始化失敗：{e}")
-            raise RuntimeError(f"無法初始化 AI 模型：{e}")
+            # 如果GPU初始化失敗，嘗試CPU模式
+            if hasattr(self, 'gpu_available') and self.gpu_available:
+                logger.warning(f"GPU模式初始化失敗：{e}，嘗試CPU模式...")
+                self.gpu_available = False
+                self._initialize_cpu_fallback()
+            else:
+                logger.error(f"模型初始化失敗：{e}")
+                raise RuntimeError(f"無法初始化 AI 模型：{e}")
+    
+    def _initialize_cpu_fallback(self):
+        """CPU模式初始化（GPU失敗時的備用方案）"""
+        try:
+            logger.info("正在切換至CPU模式...")
+            
+            # 重新初始化臉部分析模型 (CPU模式)
+            self.face_app = FaceAnalysis(name=MODEL_CONFIG["FACE_ANALYSIS_MODEL"])
+            
+            # 根據可用記憶體調整檢測尺寸
+            import psutil
+            available_memory = psutil.virtual_memory().available / (1024**3)  # GB
+            
+            if available_memory < 2:
+                detection_size = (320, 320)  # 低記憶體
+                logger.info("低記憶體模式：使用較小的檢測尺寸")
+            elif available_memory < 4:
+                detection_size = (480, 480)  # 中等記憶體
+                logger.info("中等記憶體模式：使用標準檢測尺寸")
+            else:
+                detection_size = MODEL_CONFIG["DETECTION_SIZE"]  # 高記憶體
+            
+            self.face_app.prepare(
+                ctx_id=-1,  # 強制使用CPU
+                det_size=detection_size
+            )
+            
+            # 重新初始化換臉模型
+            model_path = get_model_path(MODEL_CONFIG["FACE_SWAP_MODEL"])
+            if model_path.exists():
+                self.swapper = insightface.model_zoo.get_model(str(model_path))
+            else:
+                logger.info("本地模型不存在，嘗試下載...")
+                self.swapper = insightface.model_zoo.get_model(
+                    MODEL_CONFIG["FACE_SWAP_MODEL"], 
+                    download=True, 
+                    download_zip=True
+                )
+            
+            logger.info("CPU模式初始化完成！")
+            
+        except Exception as e:
+            logger.error(f"CPU模式初始化失敗：{e}")
+            raise RuntimeError(f"CPU模式也無法初始化：{e}")
     
     def detect_faces(self, image: np.ndarray) -> list:
         """
@@ -206,11 +292,36 @@ class FaceProcessor:
             
             target_face = target_faces[target_face_index]
             
-            # 執行換臉
-            result = self.swapper.get(target_image, target_face, source_face, paste_back=True)
-            
-            logger.info("換臉處理完成")
-            return result
+            try:
+                # 執行換臉
+                result = self.swapper.get(target_image, target_face, source_face, paste_back=True)
+                logger.info(f"換臉處理完成 ({'GPU' if self.gpu_available else 'CPU'} 模式)")
+                return result
+                
+            except Exception as swap_error:
+                # 如果GPU模式失敗，嘗試切換到CPU模式重試
+                if hasattr(self, 'gpu_available') and self.gpu_available:
+                    logger.warning(f"GPU換臉失敗: {swap_error}，嘗試使用CPU模式...")
+                    try:
+                        # 重新初始化為CPU模式
+                        self._initialize_cpu_fallback()
+                        # 重新偵測臉部（因為模型已切換）
+                        source_faces = self.detect_faces(source_image)
+                        target_faces = self.detect_faces(target_image)
+                        
+                        if len(source_faces) > source_face_index and len(target_faces) > target_face_index:
+                            source_face = source_faces[source_face_index]
+                            target_face = target_faces[target_face_index]
+                            result = self.swapper.get(target_image, target_face, source_face, paste_back=True)
+                            logger.info("CPU模式換臉處理完成")
+                            return result
+                        else:
+                            raise ValueError("切換到CPU模式後臉部偵測失敗")
+                    except Exception as cpu_error:
+                        logger.error(f"CPU模式也失敗了: {cpu_error}")
+                        raise RuntimeError(f"GPU和CPU模式都失敗了。GPU錯誤: {swap_error}，CPU錯誤: {cpu_error}")
+                else:
+                    raise swap_error
             
         except Exception as e:
             logger.error(f"換臉處理失敗：{e}")
@@ -402,6 +513,49 @@ def get_face_processor() -> FaceProcessor:
     if _processor_instance is None:
         _processor_instance = FaceProcessor()
     return _processor_instance
+
+def get_system_info() -> dict:
+    """獲取系統資訊，包括GPU狀態"""
+    try:
+        import psutil
+        gpu_available, provider = check_gpu_availability()
+        
+        # 獲取記憶體資訊
+        memory = psutil.virtual_memory()
+        
+        # 嘗試獲取GPU資訊
+        gpu_info = "N/A"
+        if gpu_available:
+            try:
+                import GPUtil
+                gpus = GPUtil.getGPUs()
+                if gpus:
+                    gpu = gpus[0]
+                    gpu_info = f"{gpu.name} ({gpu.memoryTotal}MB)"
+            except ImportError:
+                gpu_info = "GPU可用但未安裝GPUtil"
+            except Exception:
+                gpu_info = "GPU可用但獲取資訊失敗"
+        
+        return {
+            "gpu_available": gpu_available,
+            "gpu_provider": provider,
+            "gpu_info": gpu_info,
+            "memory_total_gb": round(memory.total / (1024**3), 2),
+            "memory_available_gb": round(memory.available / (1024**3), 2),
+            "memory_percent": memory.percent,
+            "cpu_count": psutil.cpu_count(),
+            "cpu_percent": psutil.cpu_percent(interval=1)
+        }
+        
+    except Exception as e:
+        logger.error(f"獲取系統資訊失敗：{e}")
+        return {
+            "gpu_available": False,
+            "gpu_provider": "Unknown",
+            "gpu_info": "獲取失敗",
+            "error": str(e)
+        }
 
 def cleanup_old_results(max_age_hours: int = 24):
     """清理舊的結果檔案"""

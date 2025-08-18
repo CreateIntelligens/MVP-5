@@ -2,7 +2,9 @@ fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
 insightface==0.7.3
-onnxruntime==1.14.1
+# GPU優先，失敗時自動使用CPU
+onnxruntime-gpu==1.19.2; sys_platform != "darwin"
+onnxruntime==1.14.1; sys_platform == "darwin"
 opencv-python==4.8.1.78
 pillow==10.1.0
 numpy==1.24.4

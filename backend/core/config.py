@@ -45,7 +45,17 @@ MODEL_CONFIG = {
     "DETECTION_SIZE": (320, 320),  # 降低偵測尺寸提高成功率
     "CTX_ID": 0,  # CPU: -1, GPU: 0
     "DET_THRESH": 0.5,  # 降低偵測閾值
-    "DET_SIZE": (640, 640)  # 備用偵測尺寸
+    "DET_SIZE": (640, 640),  # 備用偵測尺寸
+    # GPU 相關設定
+    "ENABLE_GPU": True,  # 是否啟用GPU支援
+    "GPU_MEMORY_FRACTION": 0.8,  # GPU記憶體使用比例
+    "GPU_PROVIDERS": [
+        "CUDAExecutionProvider",
+        "DirectMLExecutionProvider",  # Windows DirectML
+        "OpenVINOExecutionProvider",  # Intel OpenVINO
+        "CPUExecutionProvider"  # 備用CPU
+    ],
+    "GPU_FALLBACK_ENABLED": True,  # GPU失敗時是否自動切換CPU
 }
 
 # 模板配置
@@ -197,6 +207,19 @@ def ensure_directories():
         
 def validate_config():
     """驗證配置"""
+    # 檢查GPU支援
+    if MODEL_CONFIG["ENABLE_GPU"]:
+        try:
+            import onnxruntime as ort
+            gpu_providers = [p for p in ort.get_available_providers() 
+                           if any(gpu_name in p for gpu_name in ['CUDA', 'DirectML', 'OpenVINO'])]
+            if gpu_providers:
+                print(f"檢測到GPU Provider: {gpu_providers}")
+            else:
+                print("警告：未檢測到GPU Provider，將使用CPU模式")
+        except ImportError:
+            print("警告：ONNX Runtime 未安裝，無法使用GPU")
+    
     # 檢查模型檔案是否存在
     model_path = get_model_path(MODEL_CONFIG["FACE_SWAP_MODEL"])
     if not model_path.exists():

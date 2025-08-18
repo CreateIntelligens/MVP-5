@@ -18,20 +18,20 @@ services:
           if wget --timeout=60 --tries=3 --progress=bar:force:noscroll -O /app/models/inswapper_128.onnx 'https://huggingface.co/spaces/mkrzyzan/face-swap/resolve/main/inswapper_128.onnx'; then
             # 安全獲取檔案大小
             if [ -f /app/models/inswapper_128.onnx ]; then
-              FILE_SIZE=$(stat -c%s /app/models/inswapper_128.onnx 2>/dev/null || echo "0")
-              FILE_SIZE=${FILE_SIZE:-0}
-              echo "📊 下載檔案大小: $FILE_SIZE bytes"
+              FILE_SIZE=\$(stat -c%s /app/models/inswapper_128.onnx 2>/dev/null || echo \"0\")
+              FILE_SIZE=\${FILE_SIZE:-0}
+              echo \"📊 下載檔案大小: \$FILE_SIZE bytes\"
               
               # 驗證檔案大小（正常應該約為 256MB = 268435456 bytes）
-              if [ $FILE_SIZE -lt 200000000 ]; then
+              if [ \$FILE_SIZE -lt 200000000 ]; then
                 echo '❌ 檔案太小，可能下載不完整，嘗試備用下載源...'
                 rm -f /app/models/inswapper_128.onnx
                 echo '📥 嘗試從 GitHub 下載...'
                 wget --timeout=60 --tries=3 --progress=bar:force:noscroll -O /app/models/inswapper_128.onnx 'https://github.com/facefusion/facefusion-assets/releases/download/models/inswapper_128.onnx'
                 if [ -f /app/models/inswapper_128.onnx ]; then
-                  FILE_SIZE=$(stat -c%s /app/models/inswapper_128.onnx 2>/dev/null || echo "0")
-                  FILE_SIZE=${FILE_SIZE:-0}
-                  echo "📊 備用源檔案大小: $FILE_SIZE bytes"
+                  FILE_SIZE=\$(stat -c%s /app/models/inswapper_128.onnx 2>/dev/null || echo \"0\")
+                  FILE_SIZE=\${FILE_SIZE:-0}
+                  echo \"📊 備用源檔案大小: \$FILE_SIZE bytes\"
                 }
               }
             }
@@ -40,24 +40,24 @@ services:
             echo '📥 嘗試從 GitHub 下載...'
             wget --timeout=60 --tries=3 --progress=bar:force:noscroll -O /app/models/inswapper_128.onnx 'https://github.com/facefusion/facefusion-assets/releases/download/models/inswapper_128.onnx'
             if [ -f /app/models/inswapper_128.onnx ]; then
-              FILE_SIZE=$(stat -c%s /app/models/inswapper_128.onnx 2>/dev/null || echo "0")
-              FILE_SIZE=${FILE_SIZE:-0}
-              echo "📊 備用源檔案大小: $FILE_SIZE bytes"
+              FILE_SIZE=\$(stat -c%s /app/models/inswapper_128.onnx 2>/dev/null || echo \"0\")
+              FILE_SIZE=\${FILE_SIZE:-0}
+              echo \"📊 備用源檔案大小: \$FILE_SIZE bytes\"
             }
           }
           
           # 最終驗證
           if [ -f /app/models/inswapper_128.onnx ]; then
-            FILE_SIZE=$(stat -c%s /app/models/inswapper_128.onnx 2>/dev/null || echo "0")
-            FILE_SIZE=${FILE_SIZE:-0}
-            if [ $FILE_SIZE -lt 200000000 ]; then
+            FILE_SIZE=\$(stat -c%s /app/models/inswapper_128.onnx 2>/dev/null || echo \"0\")
+            FILE_SIZE=\${FILE_SIZE:-0}
+            if [ \$FILE_SIZE -lt 200000000 ]; then
               echo '❌ 所有下載源都失敗或檔案損壞，請檢查網路連接'
               rm -f /app/models/inswapper_128.onnx
               exit 1
             else
-              echo "✅ AI 模型下載成功！檔案大小: $FILE_SIZE bytes"
+              echo \"✅ AI 模型下載成功！檔案大小: \$FILE_SIZE bytes\"
               # 嘗試驗證檔案是否為有效的 ONNX 檔案
-              if python3 -c "import onnx; onnx.load('/app/models/inswapper_128.onnx'); print('✅ ONNX 檔案格式驗證通過')" 2>/dev/null; then
+              if python3 -c \"import onnx; onnx.load('/app/models/inswapper_128.onnx'); print('✅ ONNX 檔案格式驗證通過')\" 2>/dev/null; then
                 echo '✅ 模型檔案驗證完成'
               else
                 echo '⚠️  無法驗證 ONNX 格式，但檔案大小正常'
@@ -72,9 +72,9 @@ services:
         else
           echo '✅ AI 模型已存在，跳過下載'
           if [ -f /app/models/inswapper_128.onnx ]; then
-            FILE_SIZE=$(stat -c%s /app/models/inswapper_128.onnx 2>/dev/null || echo "0")
-            FILE_SIZE=${FILE_SIZE:-0}
-            echo "📊 現有檔案大小: $FILE_SIZE bytes"
+            FILE_SIZE=\$(stat -c%s /app/models/inswapper_128.onnx 2>/dev/null || echo \"0\")
+            FILE_SIZE=\${FILE_SIZE:-0}
+            echo \"📊 現有檔案大小: \$FILE_SIZE bytes\"
             ls -lh /app/models/inswapper_128.onnx
           else
             echo '⚠️  模型檔案不存在，但目錄檢查顯示存在'
@@ -98,27 +98,31 @@ services:
   backend:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: ai-face-swap-backend
+      dockerfile: Dockerfile.gpu  # 使用GPU版本的Dockerfile
+    container_name: ai-face-swap-backend-gpu
     expose:
       - "3001"
     volumes:
-      # 一次全掛載整個後端目錄
       - ./backend:/app
     depends_on:
       - model-downloader
     restart: unless-stopped
+    # GPU配置
     deploy:
       resources:
         limits:
-          memory: 4G
+          memory: 8G
         reservations:
-          memory: 2G
+          memory: 4G
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     environment:
       - PYTHONPATH=/app
       - ENVIRONMENT=development
-    privileged: true
-    # 使用開發模式啟動命令，支援自動重載
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
     command: ["python", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "3001", "--reload"]
 
 networks:

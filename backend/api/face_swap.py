@@ -14,7 +14,7 @@ import asyncio
 import cv2
 import time
 
-from core.face_processor import get_face_processor, cleanup_old_results
+from core.face_processor import get_face_processor, cleanup_old_results, get_system_info
 from core.config import UPLOAD_CONFIG, TEMPLATE_CONFIG, get_template_path, RESULTS_DIR
 from core.file_cleanup import cleanup_upload_file
 
@@ -29,9 +29,9 @@ task_status = {}
 
 # 請求佇列管理 (防止記憶體爆炸)
 import asyncio
-processing_semaphore = asyncio.Semaphore(2)  # 同時最多處理2個請求
+processing_semaphore = asyncio.Semaphore(1)  # 低效能硬體：同時最多處理1個請求
 request_queue_size = 0
-MAX_QUEUE_SIZE = 10
+MAX_QUEUE_SIZE = 5  # 降低佇列大小避免記憶體問題
 
 def validate_file(file: UploadFile) -> None:
     """驗證上傳的檔案"""
@@ -66,90 +66,100 @@ async def process_face_swap_task(
     target_face_index: int = 0
 ):
     """背景任務：執行換臉處理"""
-    try:
-        # 更新任務狀態：開始處理
-        task_status[task_id].update({
-            "status": "processing",
-            "progress": 10,
-            "message": "正在初始化 AI 模型..."
-        })
+    global request_queue_size
+    
+    async with processing_semaphore:
+        request_queue_size += 1
+        logger.info(f"開始處理背景換臉任務 {task_id}，佇列大小: {request_queue_size}")
         
-        # 獲取臉部處理器
-        processor = get_face_processor()
-        
-        # 更新進度：模型載入完成
-        task_status[task_id].update({
-            "progress": 30,
-            "message": "正在偵測臉部特徵..."
-        })
-        
-        # 處理模板
-        if template_id == "custom" and template_content:
-            template_info = {"description": "使用者自訂模板"}
-            template_name = "自訂模板"
-            
-            # 執行換臉處理（使用模板檔案內容）
-            result_path = processor.process_image_data(
-                user_image_data=file_content,
-                template_image_data=template_content,
-                source_face_index=source_face_index,
-                target_face_index=target_face_index
-            )
-        else:
-            # 使用預設模板
-            template_info = TEMPLATE_CONFIG["TEMPLATES"][template_id]
-            template_path = get_template_path(template_id)
-            template_name = template_info["name"]
-            
-            # 更新進度：開始換臉處理
+        try:
+            # 更新任務狀態：開始處理
             task_status[task_id].update({
-                "progress": 50,
-                "message": "AI 正在進行換臉處理..."
+                "status": "processing",
+                "progress": 10,
+                "message": "正在初始化 AI 模型..."
             })
             
-            # 執行換臉處理
-            result_path = processor.process_image_file(
-                user_image_data=file_content,
-                template_image_path=template_path,
-                source_face_index=source_face_index,
-                target_face_index=target_face_index
-            )
+            # 獲取臉部處理器
+            processor = get_face_processor()
+            
+            # 更新進度：模型載入完成
+            task_status[task_id].update({
+                "progress": 30,
+                "message": "正在偵測臉部特徵..."
+            })
+            
+            # 處理模板
+            if template_id == "custom" and template_content:
+                template_info = {"description": "使用者自訂模板"}
+                template_name = "自訂模板"
+                
+                # 執行換臉處理（使用模板檔案內容）
+                result_path = processor.process_image_data(
+                    user_image_data=file_content,
+                    template_image_data=template_content,
+                    source_face_index=source_face_index,
+                    target_face_index=target_face_index
+                )
+            else:
+                # 使用預設模板
+                template_info = TEMPLATE_CONFIG["TEMPLATES"][template_id]
+                template_path = get_template_path(template_id)
+                template_name = template_info["name"]
+                
+                # 更新進度：開始換臉處理
+                task_status[task_id].update({
+                    "progress": 50,
+                    "message": "AI 正在進行換臉處理..."
+                })
+                
+                # 執行換臉處理
+                result_path = processor.process_image_file(
+                    user_image_data=file_content,
+                    template_image_path=template_path,
+                    source_face_index=source_face_index,
+                    target_face_index=target_face_index
+                )
+            
+            # 更新進度：生成結果
+            task_status[task_id].update({
+                "progress": 90,
+                "message": "正在生成最終結果..."
+            })
+            
+            # 生成結果 URL
+            result_filename = Path(result_path).name
+            result_url = f"/results/{result_filename}"
+            
+            # 任務完成
+            task_status[task_id].update({
+                "status": "completed",
+                "progress": 100,
+                "message": "換臉處理完成",
+                "result_url": result_url,
+                "template_id": template_id,
+                "template_name": template_name,
+                "template_description": template_info["description"],
+                "completed_at": datetime.now().isoformat()
+            })
+            
+            logger.info(f"任務 {task_id} 換臉處理完成：{result_url}")
+            
+        except Exception as e:
+            # 任務失敗
+            task_status[task_id].update({
+                "status": "failed",
+                "progress": 0,
+                "message": f"換臉處理失敗：{str(e)}",
+                "error": str(e),
+                "failed_at": datetime.now().isoformat()
+            })
+            
+            logger.error(f"任務 {task_id} 換臉處理失敗：{e}")
         
-        # 更新進度：生成結果
-        task_status[task_id].update({
-            "progress": 90,
-            "message": "正在生成最終結果..."
-        })
-        
-        # 生成結果 URL
-        result_filename = Path(result_path).name
-        result_url = f"/results/{result_filename}"
-        
-        # 任務完成
-        task_status[task_id].update({
-            "status": "completed",
-            "progress": 100,
-            "message": "換臉處理完成",
-            "result_url": result_url,
-            "template_id": template_id,
-            "template_name": template_name,
-            "template_description": template_info["description"],
-            "completed_at": datetime.now().isoformat()
-        })
-        
-        logger.info(f"任務 {task_id} 換臉處理完成：{result_url}")
-        
-    except Exception as e:
-        # 任務失敗
-        task_status[task_id].update({
-            "status": "failed",
-            "progress": 0,
-            "message": f"換臉處理失敗：{str(e)}",
-            "error": str(e),
-            "failed_at": datetime.now().isoformat()
-        })
-        
-        logger.error(f"任務 {task_id} 換臉處理失敗：{e}")
+        finally:
+            request_queue_size -= 1
+            logger.info(f"背景換臉任務 {task_id} 完成，佇列大小: {request_queue_size}")
 
 @router.post("/face-swap")
 async def swap_face(
@@ -172,6 +182,14 @@ async def swap_face(
     - **target_face_index**: 模板圖片中的臉部索引 (預設: 0)
     """
     try:
+        # 檢查佇列大小
+        global request_queue_size
+        if request_queue_size >= MAX_QUEUE_SIZE:
+            raise HTTPException(
+                status_code=503, 
+                detail="伺服器忙碌中，請稍後再試"
+            )
+        
         # 自動判斷使用自訂模板還是預設模板
         if template_file and template_file.filename:
             template_id = "custom"
@@ -464,6 +482,58 @@ async def delete_result_file(filename: str):
             detail=f"檔案刪除失敗：{str(e)}"
         )
 
+@router.get("/queue/status")
+async def get_queue_status():
+    """
+    獲取當前佇列狀態和系統負載資訊
+    
+    Returns:
+        dict: 包含佇列大小、處理中任務、系統資源等資訊
+    """
+    try:
+        import psutil
+        
+        # 統計任務狀態
+        pending_tasks = sum(1 for task in task_status.values() if task.get("status") == "pending")
+        processing_tasks = sum(1 for task in task_status.values() if task.get("status") == "processing")
+        completed_tasks = sum(1 for task in task_status.values() if task.get("status") == "completed")
+        failed_tasks = sum(1 for task in task_status.values() if task.get("status") == "failed")
+        
+        # 系統資源資訊
+        memory = psutil.virtual_memory()
+        cpu_percent = psutil.cpu_percent(interval=1)
+        
+        return {
+            "success": True,
+            "queue_status": {
+                "current_queue_size": request_queue_size,
+                "max_queue_size": MAX_QUEUE_SIZE,
+                "available_semaphore": processing_semaphore._value,
+                "max_concurrent": 1  # 固定為1，因為我們設定為低效能硬體模式
+            },
+            "task_statistics": {
+                "pending": pending_tasks,
+                "processing": processing_tasks, 
+                "completed": completed_tasks,
+                "failed": failed_tasks,
+                "total": len(task_status)
+            },
+            "system_resources": {
+                "cpu_percent": cpu_percent,
+                "memory_percent": memory.percent,
+                "memory_available_gb": round(memory.available / (1024**3), 2),
+                "memory_total_gb": round(memory.total / (1024**3), 2)
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"獲取佇列狀態失敗：{e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"獲取佇列狀態失敗：{str(e)}"
+        )
+
 @router.post("/cleanup")
 async def cleanup_results(max_age_hours: int = 24):
     """
@@ -502,6 +572,36 @@ async def cleanup_results(max_age_hours: int = 24):
             detail=f"清理檔案失敗：{str(e)}"
         )
 
+@router.get("/system/info")
+async def get_system_status():
+    """
+    獲取系統狀態資訊，包括GPU支援狀態
+    
+    Returns:
+        dict: 系統資訊包括GPU、記憶體、CPU等資訊
+    """
+    try:
+        system_info = get_system_info()
+        
+        # 獲取處理器的GPU狀態
+        processor = get_face_processor()
+        processor_gpu_status = getattr(processor, 'gpu_available', False)
+        
+        return {
+            "success": True,
+            "system_info": system_info,
+            "processor_gpu_enabled": processor_gpu_status,
+            "message": f"目前使用{'GPU' if processor_gpu_status else 'CPU'}模式進行處理",
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"獲取系統資訊失敗：{e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"獲取系統資訊失敗：{str(e)}"
+        )
+
 @router.post("/swapper")
 async def swapper(
     file: UploadFile = File(..., description="使用者上傳的照片"),
@@ -523,88 +623,104 @@ async def swapper(
         target_face_index: 模板圖片中的臉部索引 (預設: 0)
     """
     try:
-        # 自動判斷使用自訂模板還是預設模板
-        if template_file and template_file.filename:
-            template_id = "custom"
-        elif not template_id:
-            # 如果都沒有提供，拋出錯誤
+        # 檢查佇列並限制並發
+        global request_queue_size
+        if request_queue_size >= MAX_QUEUE_SIZE:
             raise HTTPException(
-                status_code=400, 
-                detail="請提供 template_id 或上傳 template_file"
+                status_code=503, 
+                detail="伺服器忙碌中，請稍後再試"
             )
+        
+        async with processing_semaphore:
+            request_queue_size += 1
+            logger.info(f"開始處理同步換臉請求，佇列大小: {request_queue_size}")
             
-        # 驗證檔案
-        validate_file(file)
+            try:
+                # 自動判斷使用自訂模板還是預設模板
+                if template_file and template_file.filename:
+                    template_id = "custom"
+                elif not template_id:
+                    # 如果都沒有提供，拋出錯誤
+                    raise HTTPException(
+                        status_code=400, 
+                        detail="請提供 template_id 或上傳 template_file"
+                    )
+                    
+                # 驗證檔案
+                validate_file(file)
+                
+                # 讀取檔案內容
+                file_content = await file.read()
+                if not file_content:
+                    raise HTTPException(status_code=400, detail="檔案內容為空")
+                
+                # 處理模板檔案
+                template_content = None
+                if template_id == "custom" and template_file:
+                    validate_file(template_file)
+                    template_content = await template_file.read()
+                    if not template_content:
+                        raise HTTPException(status_code=400, detail="模板檔案內容為空")
+                elif template_id != "custom" and template_id not in TEMPLATE_CONFIG["TEMPLATES"]:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"無效的模板 ID: {template_id}，可用的模板 ID: {list(TEMPLATE_CONFIG['TEMPLATES'].keys())}"
+                    )
+                
+                # 獲取臉部處理器
+                processor = get_face_processor()
+                
+                # 直接進行換臉處理
+                start_time = datetime.now()
+                
+                # 將檔案內容轉換為圖片
+                source_image = processor._decode_image(file_content)
         
-        # 讀取檔案內容
-        file_content = await file.read()
-        if not file_content:
-            raise HTTPException(status_code=400, detail="檔案內容為空")
+                # 處理模板圖片
+                if template_id == "custom" and template_content:
+                    target_image = processor._decode_image(template_content)
+                else:
+                    # 載入預設模板
+                    template_path = get_template_path(template_id)
+                    target_image = cv2.imread(str(template_path))
+                    if target_image is None:
+                        raise HTTPException(status_code=400, detail=f"無法載入模板 {template_id}")
         
-        # 處理模板檔案
-        template_content = None
-        if template_id == "custom" and template_file:
-            validate_file(template_file)
-            template_content = await template_file.read()
-            if not template_content:
-                raise HTTPException(status_code=400, detail="模板檔案內容為空")
-        elif template_id != "custom" and template_id not in TEMPLATE_CONFIG["TEMPLATES"]:
-            raise HTTPException(
-                status_code=400,
-                detail=f"無效的模板 ID: {template_id}，可用的模板 ID: {list(TEMPLATE_CONFIG['TEMPLATES'].keys())}"
-            )
-        
-        # 獲取臉部處理器
-        processor = get_face_processor()
-        
-        # 直接進行換臉處理
-        start_time = datetime.now()
-        
-        # 將檔案內容轉換為圖片
-        source_image = processor._decode_image(file_content)
-        
-        # 處理模板圖片
-        if template_id == "custom" and template_content:
-            target_image = processor._decode_image(template_content)
-        else:
-            # 載入預設模板
-            template_path = get_template_path(template_id)
-            target_image = cv2.imread(str(template_path))
-            if target_image is None:
-                raise HTTPException(status_code=400, detail=f"無法載入模板 {template_id}")
-        
-        # 執行換臉
-        result_image = await asyncio.get_event_loop().run_in_executor(
-            None,
-            processor.swap_faces,
-            source_image,
-            target_image,
-            source_face_index,
-            target_face_index
-        )
-        
-        # 保存結果
-        result_filename = f"result_{uuid.uuid4().hex[:8]}.jpg"
-        result_path = RESULTS_DIR / result_filename
-        cv2.imwrite(str(result_path), result_image)
-        
-        result_url = f"/results/{result_filename}"
-        
-        processing_time = (datetime.now() - start_time).total_seconds()
-        
-        # 獲取模板資訊
-        template_info = TEMPLATE_CONFIG["TEMPLATES"].get(template_id, {})
-        template_name = template_info.get("name", f"模板 {template_id}")
-        template_description = template_info.get("description", "")
-        
-        return {
-            "success": True,
-            "result_url": result_url,
-            "template_name": template_name,
-            "template_description": template_description,
-            "processing_time": f"{processing_time:.2f}s",
-            "message": "換臉處理完成"
-        }
+                # 執行換臉
+                result_image = await asyncio.get_event_loop().run_in_executor(
+                    None,
+                    processor.swap_faces,
+                    source_image,
+                    target_image,
+                    source_face_index,
+                    target_face_index
+                )
+                
+                # 保存結果
+                result_filename = f"result_{uuid.uuid4().hex[:8]}.jpg"
+                result_path = RESULTS_DIR / result_filename
+                cv2.imwrite(str(result_path), result_image)
+                
+                result_url = f"/results/{result_filename}"
+                
+                processing_time = (datetime.now() - start_time).total_seconds()
+                
+                # 獲取模板資訊
+                template_info = TEMPLATE_CONFIG["TEMPLATES"].get(template_id, {})
+                template_name = template_info.get("name", f"模板 {template_id}")
+                template_description = template_info.get("description", "")
+                
+                return {
+                    "success": True,
+                    "result_url": result_url,
+                    "template_name": template_name,
+                    "template_description": template_description,
+                    "processing_time": f"{processing_time:.2f}s",
+                    "message": "換臉處理完成"
+                }
+            finally:
+                request_queue_size -= 1
+                logger.info(f"同步換臉請求完成，佇列大小: {request_queue_size}")
         
     except HTTPException:
         # 重新拋出 HTTP 異常
