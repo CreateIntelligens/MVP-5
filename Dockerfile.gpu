@@ -1,0 +1,51 @@
+# 使用NVIDIA CUDA基礎映像
+FROM nvidia/cuda:12.3.2-cudnn9-devel-ubuntu22.04
+
+# 設定時區避免互動式安裝
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Taipei
+
+# 安裝 Python 和系統依賴
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-dev \
+    libgl1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    wget \
+    curl \
+    build-essential \
+    g++ \
+    cmake \
+    && rm -rf /var/lib/apt/lists/*
+
+# 設定 Python 別名
+RUN ln -s /usr/bin/python3 /usr/bin/python
+
+# 設定工作目錄
+WORKDIR /app
+
+# 複製 GPU 版本的 requirements.txt
+COPY backend/requirements.gpu.txt ./requirements.txt
+
+# 安裝 GPU 版本的依賴
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 創建模型目錄
+RUN mkdir -p /app/{models,results,uploads}
+
+# 設定環境變數
+ENV PYTHONPATH=/app
+ENV ENVIRONMENT=development
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# 暴露端口
+EXPOSE 3001
+
+# 啟動命令
+CMD ["python", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "3001", "--reload"]
