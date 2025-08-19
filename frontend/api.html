@@ -97,6 +97,7 @@
                 <hr style="margin: 20px 0;">
                 <h3><span class="method get">GET</span> <code class="endpoint">/api/face-swap/status/{task_id}</code></h3>
                 <p><strong>查詢任務狀態</strong>: 根據任務 ID 查詢非同步任務的處理進度。</p>
+                <p><strong>任務狀態</strong>: <code>pending</code> (等待處理)、<code>processing</code> (處理中)、<code>completed</code> (已完成)、<code>failed</code> (失敗)</p>
                 <h4>成功回應 (200 OK):</h4>
                 <div class="code-block"><pre><code>{
   "success": true,
@@ -138,11 +139,13 @@
                 <hr style="margin: 20px 0;">
                 <h3><span class="method get">GET</span> <code class="endpoint">/api/results/{filename}</code></h3>
                 <p><strong>獲取結果圖片</strong>: 根據檔名獲取已處理完成的結果圖片。</p>
+                <p><strong>直接訪問路徑</strong>: <code>/results/{filename}</code> (可直接在瀏覽器中訪問)</p>
                 
                 <!-- 獲取原始圖片 -->
                 <hr style="margin: 20px 0;">
                 <h3><span class="method get">GET</span> <code class="endpoint">/api/uploads/{filename}</code></h3>
                 <p><strong>獲取原始圖片</strong>: 根據檔名獲取用戶上傳的原始圖片。</p>
+                <p><strong>直接訪問路徑</strong>: <code>/uploads/{filename}</code> (可直接在瀏覽器中訪問)</p>
                 
                 <!-- 刪除結果圖片 -->
                 <hr style="margin: 20px 0;">
@@ -153,6 +156,52 @@
                 <hr style="margin: 20px 0;">
                 <h3><span class="method delete">DELETE</span> <code class="endpoint">/api/uploads/{filename}</code></h3>
                 <p><strong>刪除原始圖片</strong>: 刪除指定的原始圖片檔案。</p>
+            </div>
+        </div>
+
+        <!-- 模板 API -->
+        <div class="api-section">
+            <div class="section-header">
+                <h2>模板 API</h2>
+            </div>
+            <div class="section-content">
+                <!-- 獲取所有模板 -->
+                <h3><span class="method get">GET</span> <code class="endpoint">/api/templates</code></h3>
+                <p><strong>獲取所有模板</strong>: 返回所有可用的模板列表，包括 ID、名稱、描述等資訊。</p>
+                
+                <!-- 搜尋模板 -->
+                <hr style="margin: 20px 0;">
+                <h3><span class="method get">GET</span> <code class="endpoint">/api/templates/search</code></h3>
+                <p><strong>搜尋模板</strong>: 根據關鍵字、分類或性別搜尋模板。</p>
+                <h4>查詢參數:</h4>
+                <table class="parameter-table">
+                    <thead><tr><th>參數名</th><th>類型</th><th>必須</th><th>描述</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>q</code></td><td>String</td><td>否</td><td>搜尋關鍵字（在名稱和描述中搜尋）</td></tr>
+                        <tr><td><code>category</code></td><td>String</td><td>否</td><td>分類篩選</td></tr>
+                        <tr><td><code>gender</code></td><td>String</td><td>否</td><td>性別篩選（male, female, unisex）</td></tr>
+                    </tbody>
+                </table>
+                
+                <!-- 獲取模板分類 -->
+                <hr style="margin: 20px 0;">
+                <h3><span class="method get">GET</span> <code class="endpoint">/api/templates/categories</code></h3>
+                <p><strong>獲取模板分類</strong>: 返回按分類組織的模板列表。</p>
+                
+                <!-- 根據性別獲取模板 -->
+                <hr style="margin: 20px 0;">
+                <h3><span class="method get">GET</span> <code class="endpoint">/api/templates/gender/{gender}</code></h3>
+                <p><strong>根據性別獲取模板</strong>: 根據指定性別篩選模板。</p>
+                
+                <!-- 獲取單個模板 -->
+                <hr style="margin: 20px 0;">
+                <h3><span class="method get">GET</span> <code class="endpoint">/api/templates/{template_id}</code></h3>
+                <p><strong>獲取模板詳情</strong>: 獲取特定模板的詳細資訊。</p>
+                
+                <!-- 獲取模板預覽 -->
+                <hr style="margin: 20px 0;">
+                <h3><span class="method get">GET</span> <code class="endpoint">/api/templates/{template_id}/preview</code></h3>
+                <p><strong>獲取模板預覽</strong>: 獲取模板預覽圖片。</p>
             </div>
         </div>
 
