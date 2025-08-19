@@ -15,7 +15,7 @@ import cv2
 import time
 
 from core.face_processor import get_face_processor, cleanup_old_results, get_system_info
-from core.config import UPLOAD_CONFIG, TEMPLATE_CONFIG, get_template_path, RESULTS_DIR
+from core.config import UPLOAD_CONFIG, TEMPLATE_CONFIG, get_template_path, RESULTS_DIR, UPLOADS_DIR
 from core.file_cleanup import cleanup_upload_file
 
 # 設定日誌
@@ -95,12 +95,15 @@ async def process_face_swap_task(
                 template_name = "自訂模板"
                 
                 # 執行換臉處理（使用模板檔案內容）
-                result_path = processor.process_image_data(
+                process_result = processor.process_image_data(
                     user_image_data=file_content,
                     template_image_data=template_content,
                     source_face_index=source_face_index,
-                    target_face_index=target_face_index
+                    target_face_index=target_face_index,
+                    task_id=task_id
                 )
+                result_path = process_result["result_path"]
+                original_path = process_result["original_path"]
             else:
                 # 使用預設模板
                 template_info = TEMPLATE_CONFIG["TEMPLATES"][template_id]
@@ -114,12 +117,15 @@ async def process_face_swap_task(
                 })
                 
                 # 執行換臉處理
-                result_path = processor.process_image_file(
+                process_result = processor.process_image_file(
                     user_image_data=file_content,
                     template_image_path=template_path,
                     source_face_index=source_face_index,
-                    target_face_index=target_face_index
+                    target_face_index=target_face_index,
+                    task_id=task_id
                 )
+                result_path = process_result["result_path"]
+                original_path = process_result["original_path"]
             
             # 更新進度：生成結果
             task_status[task_id].update({
@@ -131,12 +137,17 @@ async def process_face_swap_task(
             result_filename = Path(result_path).name
             result_url = f"/results/{result_filename}"
             
+            # 生成原圖 URL
+            original_filename = Path(original_path).name
+            original_url = f"/uploads/{original_filename}"
+            
             # 任務完成
             task_status[task_id].update({
                 "status": "completed",
                 "progress": 100,
                 "message": "換臉處理完成",
                 "result_url": result_url,
+                "original_url": original_url,
                 "template_id": template_id,
                 "template_name": template_name,
                 "template_description": template_info["description"],
@@ -349,6 +360,17 @@ async def delete_task(task_id: str):
             except Exception as e:
                 logger.warning(f"刪除結果檔案失敗：{e}")
         
+        # 刪除原圖檔案
+        if task.get("original_url"):
+            try:
+                original_filename = task["original_url"].split("/")[-1]
+                original_path = UPLOADS_DIR / original_filename
+                if original_path.exists():
+                    original_path.unlink()
+                    logger.info(f"已刪除原圖檔案：{original_filename}")
+            except Exception as e:
+                logger.warning(f"刪除原圖檔案失敗：{e}")
+        
         # 刪除任務記錄
         del task_status[task_id]
         
@@ -444,6 +466,41 @@ async def get_result_file(filename: str):
             detail=f"檔案獲取失敗：{str(e)}"
         )
 
+@router.get("/uploads/{filename}")
+async def get_original_file(filename: str):
+    """
+    獲取用戶上傳的原始檔案
+    
+    - **filename**: 原始檔案名稱
+    """
+    try:
+        # 安全檢查：只允許特定格式的檔名
+        if not filename.startswith("original_") or not filename.endswith(".jpg"):
+            raise HTTPException(status_code=400, detail="無效的檔案名稱")
+        
+        # 建構檔案路徑
+        file_path = UPLOADS_DIR / filename
+        
+        # 檢查檔案是否存在
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="檔案不存在")
+        
+        # 返回檔案
+        return FileResponse(
+            path=str(file_path),
+            filename=filename,
+            media_type="image/jpeg"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"原始檔案獲取失敗：{e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"原始檔案獲取失敗：{str(e)}"
+        )
+
 @router.delete("/results/{filename}")
 async def delete_result_file(filename: str):
     """
@@ -480,6 +537,44 @@ async def delete_result_file(filename: str):
         raise HTTPException(
             status_code=500,
             detail=f"檔案刪除失敗：{str(e)}"
+        )
+
+@router.delete("/uploads/{filename}")
+async def delete_original_file(filename: str):
+    """
+    刪除原始上傳檔案
+    
+    - **filename**: 要刪除的檔案名稱
+    """
+    try:
+        # 安全檢查
+        if not filename.startswith("original_") or not filename.endswith(".jpg"):
+            raise HTTPException(status_code=400, detail="無效的檔案名稱")
+        
+        # 建構檔案路徑
+        file_path = UPLOADS_DIR / filename
+        
+        # 檢查檔案是否存在
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="檔案不存在")
+        
+        # 刪除檔案
+        file_path.unlink()
+        
+        logger.info(f"已刪除原始檔案：{filename}")
+        
+        return {
+            "success": True,
+            "message": f"原始檔案 {filename} 已刪除"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"原始檔案刪除失敗：{e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"原始檔案刪除失敗：{str(e)}"
         )
 
 @router.get("/queue/status")
@@ -673,6 +768,14 @@ async def swapper(
                 # 直接進行換臉處理
                 start_time = datetime.now()
                 
+                # 保存原圖
+                original_filename = f"original_{uuid.uuid4().hex[:8]}.jpg"
+                original_path = UPLOADS_DIR / original_filename
+                UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+                with open(original_path, 'wb') as f:
+                    f.write(file_content)
+                original_url = f"/uploads/{original_filename}"
+                
                 # 將檔案內容轉換為圖片
                 source_image = processor._decode_image(file_content)
         
@@ -713,6 +816,7 @@ async def swapper(
                 return {
                     "success": True,
                     "result_url": result_url,
+                    "original_url": original_url,
                     "template_name": template_name,
                     "template_description": template_description,
                     "processing_time": f"{processing_time:.2f}s",
