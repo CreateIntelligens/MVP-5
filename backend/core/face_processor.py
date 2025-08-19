@@ -14,7 +14,7 @@ import logging
 import subprocess
 import sys
 
-from .config import MODEL_CONFIG, get_model_path, RESULTS_DIR
+from .config import MODEL_CONFIG, get_model_path, RESULTS_DIR, UPLOADS_DIR
 
 # 設定日誌
 logger = logging.getLogger(__name__)
@@ -332,8 +332,9 @@ class FaceProcessor:
         user_image_data: bytes, 
         template_image_path: Union[str, Path],
         source_face_index: int = 0,
-        target_face_index: int = 0
-    ) -> str:
+        target_face_index: int = 0,
+        task_id: str = None
+    ) -> dict:
         """
         處理圖片檔案並執行換臉
         
@@ -342,11 +343,15 @@ class FaceProcessor:
             template_image_path: 模板圖片路徑
             source_face_index: 來源臉部索引
             target_face_index: 目標臉部索引
+            task_id: 任務ID（用於命名原圖）
             
         Returns:
-            str: 結果圖片的檔案路徑
+            dict: 包含結果圖片和原圖路徑的字典
         """
         try:
+            # 儲存原圖
+            original_path = self._save_original_image(user_image_data, task_id)
+            
             # 解析使用者圖片
             user_image = self._decode_image(user_image_data)
             
@@ -364,7 +369,10 @@ class FaceProcessor:
             # 儲存結果
             result_path = self._save_result(result_image)
             
-            return result_path
+            return {
+                "result_path": result_path,
+                "original_path": original_path
+            }
             
         except Exception as e:
             logger.error(f"圖片處理失敗：{e}")
@@ -375,8 +383,9 @@ class FaceProcessor:
         user_image_data: bytes, 
         template_image_data: bytes,
         source_face_index: int = 0,
-        target_face_index: int = 0
-    ) -> str:
+        target_face_index: int = 0,
+        task_id: str = None
+    ) -> dict:
         """
         處理圖片資料並執行換臉（用於自訂模板）
         
@@ -385,11 +394,15 @@ class FaceProcessor:
             template_image_data: 模板圖片的二進位資料
             source_face_index: 來源臉部索引
             target_face_index: 目標臉部索引
+            task_id: 任務ID（用於命名原圖）
             
         Returns:
-            str: 結果圖片的檔案路徑
+            dict: 包含結果圖片和原圖路徑的字典
         """
         try:
+            # 儲存原圖
+            original_path = self._save_original_image(user_image_data, task_id)
+            
             # 解析使用者圖片
             user_image = self._decode_image(user_image_data)
             
@@ -407,7 +420,10 @@ class FaceProcessor:
             # 儲存結果
             result_path = self._save_result(result_image)
             
-            return result_path
+            return {
+                "result_path": result_path,
+                "original_path": original_path
+            }
             
         except Exception as e:
             logger.error(f"圖片處理失敗：{e}")
@@ -464,6 +480,29 @@ class FaceProcessor:
             
         except Exception as e:
             raise RuntimeError(f"結果儲存失敗：{e}")
+    
+    def _save_original_image(self, image_data: bytes, task_id: str = None) -> str:
+        """儲存用戶上傳的原圖"""
+        try:
+            # 生成唯一檔名
+            if task_id:
+                original_filename = f"original_{task_id}.jpg"
+            else:
+                original_filename = f"original_{uuid.uuid4().hex}.jpg"
+            original_path = UPLOADS_DIR / original_filename
+            
+            # 確保上傳目錄存在
+            UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+            
+            # 儲存原始圖片
+            with open(original_path, 'wb') as f:
+                f.write(image_data)
+            
+            logger.info(f"原圖已儲存：{original_path}")
+            return str(original_path)
+            
+        except Exception as e:
+            raise RuntimeError(f"原圖儲存失敗：{e}")
     
     def get_face_count(self, image_data: bytes) -> int:
         """獲取圖片中的臉部數量"""
