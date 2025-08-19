@@ -32,7 +32,7 @@ UPLOAD_CONFIG = {
     "ALLOWED_EXTENSIONS": {".jpg", ".jpeg", ".png", ".webp"},
     "ALLOWED_MIME_TYPES": {
         "image/jpeg",
-        "image/jpg", 
+        "image/jpg",
         "image/png",
         "image/webp"
     }
@@ -70,7 +70,7 @@ TEMPLATE_CONFIG = {
             "path": "./models/templates/step01.jpg"
         },
         "2": {
-            "id": "2", 
+            "id": "2",
             "name": "模板 2",
             "description": "預設模板",
             "category": "默認",
@@ -79,7 +79,7 @@ TEMPLATE_CONFIG = {
         },
         "3": {
             "id": "3",
-            "name": "模板 3", 
+            "name": "模板 3",
             "description": "預設模板",
             "category": "默認",
             "gender": "unisex",
@@ -90,7 +90,7 @@ TEMPLATE_CONFIG = {
             "name": "模板 4",
             "description": "預設模板",
             "category": "默認",
-            "gender": "unisex", 
+            "gender": "unisex",
             "path": "./models/templates/step04.jpg"
         },
         "5": {
@@ -108,7 +108,47 @@ TEMPLATE_CONFIG = {
             "category": "默認",
             "gender": "unisex",
             "path": "./models/templates/step06.jpg"
-        }
+        },
+        "kobe": {
+            "id": "kobe",
+            "name": "模板 7",
+            "description": "kobe test",
+            "category": "帥哥黑人",
+            "gender": "male",
+            "path": "./models/templates/kobe.jpg"
+        },
+        "wife": {
+            "id": "wife",
+            "name": "模板 8",
+            "description": "犀利人妻",
+            "category": "?",
+            "gender": "?",
+            "path": "./models/templates/犀利人妻_改.png"
+        },
+        "love": {
+            "id": "love",
+            "name": "模板 9",
+            "description": "命中註定我愛你",
+            "category": "?",
+            "gender": "?",
+            "path": "./models/templates/命中註定＿改.png"
+        },
+        "play": {
+            "id": "play",
+            "name": "模板 10",
+            "description": "綜藝玩很大",
+            "category": "?",
+            "gender": "?",
+            "path": "./models/templates/綜藝玩很大＿改.png"
+        },
+        "super": {
+            "id": "super",
+            "name": "模板 11",
+            "description": "超級夜總會",
+            "category": "?",
+            "gender": "?",
+            "path": "./models/templates/超級夜總會＿改.png"
+        },
     }
 }
 
@@ -151,13 +191,13 @@ CACHE_CONFIG = {
 # 檔案清理配置
 FILE_CLEANUP_CONFIG = {
     "ENABLE_CLEANUP": True,  # 是否啟用自動清理
-    "RESULT_FILE_TTL": 24 * 3600,  # 結果檔案保留時間（秒）- 24小時
-    "UPLOAD_FILE_TTL": 3600,  # 上傳檔案保留時間（秒）- 1小時
-    "MAX_RESULT_FILES": 50,  # 最大結果檔案數量
-    "MAX_UPLOAD_FILES": 20,  # 最大上傳檔案數量
-    "CLEANUP_INTERVAL": 3600,  # 清理檢查間隔（秒）- 1小時
+    "RESULT_FILE_TTL": 31 * 24 * 3600,  # 結果檔案保留時間（秒）- 31天
+    "UPLOAD_FILE_TTL": 31 * 24 * 3600,  # 上傳檔案保留時間（秒）- 31天
+    "MAX_RESULT_FILES": 1000,  # 最大結果檔案數量（增加以支援長期儲存）
+    "MAX_UPLOAD_FILES": 1000,  # 最大上傳檔案數量（增加以支援長期儲存）
+    "CLEANUP_INTERVAL": 24 * 3600,  # 清理檢查間隔（秒）- 24小時
     "CLEANUP_ON_STARTUP": True,  # 啟動時是否清理
-    "CLEANUP_AFTER_PROCESS": True,  # 處理完成後是否清理上傳檔案
+    "CLEANUP_AFTER_PROCESS": False,  # 處理完成後不立即清理上傳檔案（保留31天）
 }
 
 # 監控配置
@@ -177,21 +217,24 @@ DATABASE_CONFIG = {
     "ECHO": DEBUG
 }
 
+
 def get_model_path(model_name: str) -> Path:
     """獲取模型檔案路徑"""
     return MODELS_DIR / model_name
+
 
 def get_template_path(template_id: str) -> Path:
     """獲取模板圖片路徑"""
     template = TEMPLATE_CONFIG["TEMPLATES"].get(template_id)
     if not template:
         raise ValueError(f"Template {template_id} not found")
-    
+
     # 轉換相對路徑為絕對路徑
     template_path = template["path"]
     if template_path.startswith("./"):
         return BASE_DIR / template_path[2:]
     return Path(template_path)
+
 
 def ensure_directories():
     """確保必要的目錄存在"""
@@ -201,30 +244,31 @@ def ensure_directories():
         MODELS_DIR,
         MODELS_DIR / "templates"
     ]
-    
+
     for directory in directories:
         directory.mkdir(parents=True, exist_ok=True)
-        
+
+
 def validate_config():
     """驗證配置"""
     # 檢查GPU支援
     if MODEL_CONFIG["ENABLE_GPU"]:
         try:
             import onnxruntime as ort
-            gpu_providers = [p for p in ort.get_available_providers() 
-                           if any(gpu_name in p for gpu_name in ['CUDA', 'DirectML', 'OpenVINO'])]
+            gpu_providers = [p for p in ort.get_available_providers()
+                             if any(gpu_name in p for gpu_name in ['CUDA', 'DirectML', 'OpenVINO'])]
             if gpu_providers:
                 print(f"檢測到GPU Provider: {gpu_providers}")
             else:
                 print("警告：未檢測到GPU Provider，將使用CPU模式")
         except ImportError:
             print("警告：ONNX Runtime 未安裝，無法使用GPU")
-    
+
     # 檢查模型檔案是否存在
     model_path = get_model_path(MODEL_CONFIG["FACE_SWAP_MODEL"])
     if not model_path.exists():
         print(f"警告：AI 模型檔案不存在：{model_path}")
-    
+
     # 檢查模板檔案
     for template_id, template in TEMPLATE_CONFIG["TEMPLATES"].items():
         try:
@@ -233,6 +277,7 @@ def validate_config():
                 print(f"警告：模板檔案不存在：{template_path}")
         except Exception as e:
             print(f"警告：模板 {template_id} 配置錯誤：{e}")
+
 
 # 初始化配置
 if __name__ == "__main__":
