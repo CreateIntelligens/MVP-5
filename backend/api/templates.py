@@ -28,6 +28,9 @@ async def get_templates() -> Dict[str, Any]:
     - **description**: 模板描述
     - **category**: 模板分類
     - **gender**: 適用性別 (male/female/unisex)
+    - **faces**: 人臉資訊陣列，包含每個人臉的 index 和 name
+      - **index**: 人臉索引 (換臉時的 target_face_index 參數)
+      - **name**: 人臉名稱
     - **available**: 是否可用
     - **preview_url**: 預覽圖片下載URL (可直接下載圖片)
     """
@@ -49,6 +52,7 @@ async def get_templates() -> Dict[str, Any]:
                 "description": template_info["description"],
                 "category": template_info["category"],
                 "gender": template_info["gender"],
+                "faces": template_info.get("faces", []),
                 "available": file_exists,
                 "preview_url": f"/api/templates/{template_id}/preview" if file_exists else None
             }
@@ -100,7 +104,8 @@ async def get_template_categories() -> Dict[str, Any]:
                     "id": template_info["id"],
                     "name": template_info["name"],
                     "description": template_info["description"],
-                    "gender": template_info["gender"]
+                    "gender": template_info["gender"],
+                    "faces": template_info.get("faces", [])
                 })
                 categories[category]["count"] += 1
         
@@ -140,6 +145,9 @@ async def search_templates(
     - **description**: 模板描述
     - **category**: 模板分類
     - **gender**: 適用性別 (male/female/unisex)
+    - **faces**: 人臉資訊陣列，包含每個人臉的 index 和 name
+      - **index**: 人臉索引 (換臉時的 target_face_index 參數)
+      - **name**: 人臉名稱
     - **preview_url**: 預覽圖片下載URL (可直接下載圖片)
     """
     try:
@@ -174,6 +182,7 @@ async def search_templates(
                 "description": template_info["description"],
                 "category": template_info["category"],
                 "gender": template_info["gender"],
+                "faces": template_info.get("faces", []),
                 "preview_url": f"/api/templates/{template_id}/preview"
             }
         
@@ -209,6 +218,9 @@ async def get_templates_by_gender(gender: str) -> Dict[str, Any]:
     - **description**: 模板描述
     - **category**: 模板分類
     - **gender**: 適用性別 (male/female/unisex)
+    - **faces**: 人臉資訊陣列，包含每個人臉的 index 和 name
+      - **index**: 人臉索引 (換臉時的 target_face_index 參數)
+      - **name**: 人臉名稱
     - **preview_url**: 預覽圖片下載URL (可直接下載圖片)
     """
     try:
@@ -237,6 +249,7 @@ async def get_templates_by_gender(gender: str) -> Dict[str, Any]:
                         "description": template_info["description"],
                         "category": template_info["category"],
                         "gender": template_info["gender"],
+                        "faces": template_info.get("faces", []),
                         "preview_url": f"/api/templates/{template_id}/preview"
                     }
         
@@ -269,6 +282,9 @@ async def get_template(template_id: str) -> Dict[str, Any]:
     - **description**: 模板描述
     - **category**: 模板分類
     - **gender**: 適用性別 (male/female/unisex)
+    - **faces**: 人臉資訊陣列，包含每個人臉的 index 和 name
+      - **index**: 人臉索引 (換臉時的 target_face_index 參數)
+      - **name**: 人臉名稱
     - **available**: 是否可用
     - **file_size**: 檔案大小 (bytes)
     - **preview_url**: 預覽圖片下載URL (可直接下載圖片)
@@ -302,10 +318,11 @@ async def get_template(template_id: str) -> Dict[str, Any]:
                 "description": template_info["description"],
                 "category": template_info["category"],
                 "gender": template_info["gender"],
+                "faces": template_info.get("faces", []),
                 "available": file_exists,
                 "file_size": file_size,
                 "preview_url": f"/api/templates/{template_id}/preview" if file_exists else None,
-                "image_path": f"/models/templates/step{template_id.zfill(2)}.jpg" if file_exists else None
+                "image_path": f"/{template_info['path'][2:]}" if file_exists and template_info['path'].startswith('./') else template_info['path'] if file_exists else None
             }
         }
         
