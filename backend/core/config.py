@@ -61,53 +61,115 @@ MODEL_CONFIG = {
 # 模板配置
 TEMPLATE_CONFIG = {
     "TEMPLATES": {
-        "1": {
+        "01": {
             "id": "01",
             "name": "模板 1",
             "description": "預設模板",
             "category": "默認",
             "gender": "unisex",
+            "faces": [
+                {
+                    "index": 0,
+                    "name": "主要人物",
+                }
+            ],
             "path": "./models/templates/step01.jpg"
         },
-        "2": {
+        "02": {
             "id": "02", 
             "name": "模板 2",
             "description": "預設模板",
             "category": "默認",
             "gender": "unisex",
+            "faces": [
+                {
+                    "index": 0,
+                    "name": "主要人物",
+                }
+            ],
             "path": "./models/templates/step02.jpg"
         },
-        "3": {
+        "03": {
             "id": "03",
             "name": "模板 3", 
             "description": "預設模板",
             "category": "默認",
             "gender": "unisex",
+            "faces": [
+                {
+                    "index": 0,
+                    "name": "主要人物",
+                }
+            ],
             "path": "./models/templates/step03.jpg"
         },
-        "4": {
+        "04": {
             "id": "04",
             "name": "模板 4",
             "description": "預設模板",
             "category": "默認",
             "gender": "unisex", 
+            "faces": [
+                {
+                    "index": 0,
+                    "name": "主要人物",
+                }
+            ],
             "path": "./models/templates/step04.jpg"
         },
-        "5": {
+        "05": {
             "id": "05",
             "name": "模板 5",
             "description": "預設模板",
             "category": "默認",
             "gender": "unisex",
+            "faces": [
+                {
+                    "index": 0,
+                    "name": "主要人物",
+                }
+            ],
             "path": "./models/templates/step05.jpg"
         },
-        "6": {
+        "06": {
             "id": "06",
             "name": "模板 6",
             "description": "預設模板",
             "category": "默認",
             "gender": "unisex",
+            "faces": [
+                {
+                    "index": 0,
+                    "name": "主要人物",
+                }
+            ],
             "path": "./models/templates/step06.jpg"
+        },
+        "07": {
+            "id": "07",
+            "name": "模板 7",
+            "description": "測試全家福",
+            "category": "默認",
+            "gender": "unisex",
+            "faces": [
+                {
+                    "index": 0,
+                    "name": "左1",
+                },
+                {
+                    "index": 1,
+                    "name": "左2",
+                },
+                {
+                    "index": 2,
+                    "name": "右2",
+                },
+                {
+                    "index": 3,
+                    "name": "右1",
+                },
+            ],
+            "path": "./models/templates/4people.jpeg"
         }
     }
 }
