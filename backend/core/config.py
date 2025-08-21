@@ -185,7 +185,7 @@ TEMPLATE_CONFIG = {
             ],
             "path": "./models/templates/kobe.jpg"
         },
-        "4": {
+        "2": {
             "id": "wife",
             "name": "模板 8",
             "description": "犀利人妻",
@@ -239,7 +239,7 @@ TEMPLATE_CONFIG = {
             ],
             "path": "./models/templates/綜藝玩很大.png"
         },
-        "2": {
+        "4": {
             "id": "super",
             "name": "模板 11",
             "description": "超級夜總會",
