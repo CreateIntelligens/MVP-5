@@ -61,53 +61,115 @@ MODEL_CONFIG = {
 # 模板配置
 TEMPLATE_CONFIG = {
     "TEMPLATES": {
-        "1": {
-            "id": "1",
+        "01": {
+            "id": "01",
             "name": "模板 1",
             "description": "預設模板",
             "category": "默認",
             "gender": "unisex",
+            "faces": [
+                {
+                    "index": 0,
+                    "name": "主要人物",
+                }
+            ],
             "path": "./models/templates/step01.jpg"
         },
-        "2": {
-            "id": "2",
+        "02": {
+            "id": "02", 
             "name": "模板 2",
             "description": "預設模板",
             "category": "默認",
             "gender": "unisex",
+            "faces": [
+                {
+                    "index": 0,
+                    "name": "主要人物",
+                }
+            ],
             "path": "./models/templates/step02.jpg"
         },
-        "3": {
-            "id": "3",
-            "name": "模板 3",
+        "03": {
+            "id": "03",
+            "name": "模板 3", 
             "description": "預設模板",
             "category": "默認",
             "gender": "unisex",
+            "faces": [
+                {
+                    "index": 0,
+                    "name": "主要人物",
+                }
+            ],
             "path": "./models/templates/step03.jpg"
         },
-        "4": {
-            "id": "4",
+        "04": {
+            "id": "04",
             "name": "模板 4",
             "description": "預設模板",
             "category": "默認",
-            "gender": "unisex",
+            "gender": "unisex", 
+            "faces": [
+                {
+                    "index": 0,
+                    "name": "主要人物",
+                }
+            ],
             "path": "./models/templates/step04.jpg"
         },
-        "5": {
-            "id": "5",
+        "05": {
+            "id": "05",
             "name": "模板 5",
             "description": "預設模板",
             "category": "默認",
             "gender": "unisex",
+            "faces": [
+                {
+                    "index": 0,
+                    "name": "主要人物",
+                }
+            ],
             "path": "./models/templates/step05.jpg"
         },
-        "6": {
-            "id": "6",
+        "06": {
+            "id": "06",
             "name": "模板 6",
             "description": "預設模板",
             "category": "默認",
             "gender": "unisex",
+            "faces": [
+                {
+                    "index": 0,
+                    "name": "主要人物",
+                }
+            ],
             "path": "./models/templates/step06.jpg"
+        },
+        "07": {
+            "id": "07",
+            "name": "模板 7",
+            "description": "測試全家福",
+            "category": "默認",
+            "gender": "unisex",
+            "faces": [
+                {
+                    "index": 0,
+                    "name": "左1",
+                },
+                {
+                    "index": 1,
+                    "name": "左2",
+                },
+                {
+                    "index": 2,
+                    "name": "右2",
+                },
+                {
+                    "index": 3,
+                    "name": "右1",
+                },
+            ],
+            "path": "./models/templates/4people.jpeg"
         },
         "kobe": {
             "id": "kobe",
@@ -115,39 +177,88 @@ TEMPLATE_CONFIG = {
             "description": "kobe test",
             "category": "帥哥黑人",
             "gender": "male",
+            "faces": [
+                {
+                    "index": 0,
+                    "name": "kobe",
+                }
+            ],
             "path": "./models/templates/kobe.jpg"
         },
-        "wife": {
+        "4": {
             "id": "wife",
             "name": "模板 8",
             "description": "犀利人妻",
             "category": "?",
             "gender": "?",
-            "path": "./models/templates/犀利人妻_改.png"
+            "faces": [
+                {
+                    "index": 0,
+                    "name": "左1",
+                },
+                {
+                    "index": 1,
+                    "name": "左2",
+                },
+                {
+                    "index": 2,
+                    "name": "左3",
+                }
+            ],
+            "path": "./models/templates/犀利人妻.png"
         },
-        "love": {
+        "3": {
             "id": "love",
             "name": "模板 9",
             "description": "命中註定我愛你",
             "category": "?",
             "gender": "?",
-            "path": "./models/templates/命中註定＿改.png"
+            "faces": [
+                {
+                    "index": 0,
+                    "name": "左1",
+                },
+                {
+                    "index": 1,
+                    "name": "阮經天",
+                }
+            ],
+            "path": "./models/templates/命中註定.png"
         },
-        "play": {
+        "1": {
             "id": "play",
             "name": "模板 10",
             "description": "綜藝玩很大",
             "category": "?",
             "gender": "?",
-            "path": "./models/templates/綜藝玩很大＿改.png"
+            "faces": [
+                {
+                    "index": 1,
+                    "name": "吳宗憲",
+                },
+            ],
+            "path": "./models/templates/綜藝玩很大.png"
         },
-        "super": {
+        "2": {
             "id": "super",
             "name": "模板 11",
             "description": "超級夜總會",
             "category": "?",
             "gender": "?",
-            "path": "./models/templates/超級夜總會＿改.png"
+            "faces": [
+                {
+                    "index": 0,
+                    "name": "許效舜",
+                },
+                {
+                    "index": 1,
+                    "name": "小燕?",
+                },{
+                    "index": 2,
+                    "name": "鼻孔",
+                }
+            ],
+            "path": "./models/templates/超級夜總會.png"
         },
     }
 }
