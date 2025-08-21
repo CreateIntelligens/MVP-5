@@ -37,6 +37,7 @@ app.add_middleware(
 ensure_directories()
 app.mount("/results", StaticFiles(directory="results"), name="results")
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+app.mount("/models", StaticFiles(directory="models"), name="models")
 
 # 註冊 API 路由
 app.include_router(face_swap_router, prefix="/api", tags=["Face Swap"])
