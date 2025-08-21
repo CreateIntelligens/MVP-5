@@ -21,6 +21,15 @@ async def get_templates() -> Dict[str, Any]:
     獲取所有可用的模板
     
     返回所有模板的詳細資訊，包括 ID、名稱、描述、分類等
+    
+    **返回字段說明:**
+    - **id**: 模板ID
+    - **name**: 模板名稱  
+    - **description**: 模板描述
+    - **category**: 模板分類
+    - **gender**: 適用性別 (male/female/unisex)
+    - **available**: 是否可用
+    - **preview_url**: 預覽圖片下載URL (可直接下載圖片)
     """
     try:
         templates = {}
@@ -124,6 +133,14 @@ async def search_templates(
     - **q**: 搜尋關鍵字（在名稱和描述中搜尋）
     - **category**: 分類篩選
     - **gender**: 性別篩選
+    
+    **返回字段說明:**
+    - **id**: 模板ID
+    - **name**: 模板名稱
+    - **description**: 模板描述
+    - **category**: 模板分類
+    - **gender**: 適用性別 (male/female/unisex)
+    - **preview_url**: 預覽圖片下載URL (可直接下載圖片)
     """
     try:
         filtered_templates = {}
@@ -185,6 +202,14 @@ async def get_templates_by_gender(gender: str) -> Dict[str, Any]:
     根據性別篩選模板
     
     - **gender**: 性別 (male, female, unisex)
+    
+    **返回字段說明:**
+    - **id**: 模板ID
+    - **name**: 模板名稱
+    - **description**: 模板描述
+    - **category**: 模板分類
+    - **gender**: 適用性別 (male/female/unisex)
+    - **preview_url**: 預覽圖片下載URL (可直接下載圖片)
     """
     try:
         valid_genders = {"male", "female", "unisex"}
@@ -237,6 +262,17 @@ async def get_template(template_id: str) -> Dict[str, Any]:
     獲取特定模板的詳細資訊
     
     - **template_id**: 模板 ID
+    
+    **返回字段說明:**
+    - **id**: 模板ID
+    - **name**: 模板名稱
+    - **description**: 模板描述
+    - **category**: 模板分類
+    - **gender**: 適用性別 (male/female/unisex)
+    - **available**: 是否可用
+    - **file_size**: 檔案大小 (bytes)
+    - **preview_url**: 預覽圖片下載URL (可直接下載圖片)
+    - **image_path**: 圖片靜態路徑 (用於前端顯示，如: /models/templates/step01.jpg)
     """
     try:
         if template_id not in TEMPLATE_CONFIG["TEMPLATES"]:
@@ -268,7 +304,8 @@ async def get_template(template_id: str) -> Dict[str, Any]:
                 "gender": template_info["gender"],
                 "available": file_exists,
                 "file_size": file_size,
-                "preview_url": f"/api/templates/{template_id}/preview" if file_exists else None
+                "preview_url": f"/api/templates/{template_id}/preview" if file_exists else None,
+                "image_path": f"/models/templates/step{template_id.zfill(2)}.jpg" if file_exists else None
             }
         }
         
