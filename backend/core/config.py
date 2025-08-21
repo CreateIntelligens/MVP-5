@@ -194,15 +194,15 @@ TEMPLATE_CONFIG = {
             "faces": [
                 {
                     "index": 0,
-                    "name": "左1",
+                    "name": "朱芯儀",
                 },
                 {
                     "index": 1,
-                    "name": "左2",
+                    "name": "溫昇豪",
                 },
                 {
                     "index": 2,
-                    "name": "左3",
+                    "name": "隋棠",
                 }
             ],
             "path": "./models/templates/犀利人妻.png"
@@ -216,7 +216,7 @@ TEMPLATE_CONFIG = {
             "faces": [
                 {
                     "index": 0,
-                    "name": "左1",
+                    "name": "陳喬恩",
                 },
                 {
                     "index": 1,
@@ -252,10 +252,10 @@ TEMPLATE_CONFIG = {
                 },
                 {
                     "index": 1,
-                    "name": "小燕?",
+                    "name": "苗可麗",
                 },{
                     "index": 2,
-                    "name": "鼻孔",
+                    "name": "澎恰恰",
                 }
             ],
             "path": "./models/templates/超級夜總會.png"
