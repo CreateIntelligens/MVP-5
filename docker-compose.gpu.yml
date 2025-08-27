@@ -83,16 +83,68 @@ services:
       "
     restart: "no"
 
+  # SSL憑證初始化服務
+  ssl-init:
+    image: alpine:latest
+    container_name: ai-face-swap-ssl-init
+    volumes:
+      - ./ssl:/ssl
+    environment:
+      - HOST_IP=${HOST_IP:-localhost}
+      - DOMAIN_NAME=${DOMAIN_NAME:-localhost}
+      - SSL_COUNTRY=${SSL_COUNTRY:-TW}
+      - SSL_STATE=${SSL_STATE:-Taiwan}
+      - SSL_CITY=${SSL_CITY:-Taipei}
+      - SSL_ORG=${SSL_ORG:-Dev}
+      - SSL_DAYS=${SSL_DAYS:-365}
+    command: >
+      sh -c "
+        apk add --no-cache openssl &&
+        echo '🔐 正在檢查SSL憑證...' &&
+        mkdir -p /ssl &&
+        if [ ! -f /ssl/nginx-selfsigned.key ]; then
+          echo '🔄 生成私鑰...' &&
+          openssl genrsa -out /ssl/nginx-selfsigned.key 2048;
+        fi &&
+        if [ ! -f /ssl/nginx-selfsigned.crt ] || ! openssl x509 -in /ssl/nginx-selfsigned.crt -text -noout | grep -q \"\$HOST_IP\"; then
+          echo '🔄 生成SSL憑證...' &&
+          SAN=\"DNS:localhost,DNS:\$DOMAIN_NAME\" &&
+          if [ \"\$HOST_IP\" != \"localhost\" ] && [ \"\$HOST_IP\" != \"\$DOMAIN_NAME\" ]; then
+            if echo \"\$HOST_IP\" | grep -E '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+\$' > /dev/null; then
+              SAN=\"\$SAN,IP:\$HOST_IP\";
+            else
+              SAN=\"\$SAN,DNS:\$HOST_IP\";
+            fi;
+          fi &&
+          openssl req -new -x509 -key /ssl/nginx-selfsigned.key -out /ssl/nginx-selfsigned.crt -days \$SSL_DAYS -subj \"/C=\$SSL_COUNTRY/ST=\$SSL_STATE/L=\$SSL_CITY/O=\$SSL_ORG/CN=\$DOMAIN_NAME\" -addext \"subjectAltName=\$SAN\" &&
+          echo '✅ SSL憑證生成完成';
+        else
+          echo '✅ SSL憑證已存在且有效';
+        fi &&
+        chmod 600 /ssl/nginx-selfsigned.key &&
+        chmod 644 /ssl/nginx-selfsigned.crt &&
+        echo '🚀 SSL憑證準備完成！'
+      "
+    restart: "no"
+
   frontend:
     image: docker.io/library/nginx:alpine
     container_name: ai-face-swap-frontend
     ports:
-      - "8882:80"
+      - "8881:80"   # HTTP (重定向到HTTPS)
+      - "8882:443"  # HTTPS (維持原有的對外port)
     volumes:
       - ./frontend:/usr/share/nginx/html
       - ./nginx.conf:/etc/nginx/nginx.conf
+      # SSL憑證目錄
+      - ./ssl:/etc/ssl/certs:ro
+      - ./ssl:/etc/ssl/private:ro
+    environment:
+      - HOST_IP=${HOST_IP:-localhost}
+      - DOMAIN_NAME=${DOMAIN_NAME:-localhost}
     depends_on:
       - backend
+      - ssl-init
     restart: unless-stopped
 
   backend:
