@@ -101,16 +101,14 @@ services:
       sh -c "
         apk add --no-cache openssl &&
         mkdir -p /ssl &&
-        if [ ! -f /ssl/nginx-selfsigned.key ]; then
-          echo 'Generating private key...' &&
-          openssl genrsa -out /ssl/nginx-selfsigned.key 2048;
-        fi &&
-        if [ ! -f /ssl/nginx-selfsigned.crt ]; then
-          echo 'Generating SSL certificate...' &&
+        if [ ! -f /ssl/nginx-selfsigned.key ] || [ ! -f /ssl/nginx-selfsigned.crt ]; then
+          echo 'Generating SSL keypair...' &&
+          rm -f /ssl/nginx-selfsigned.key /ssl/nginx-selfsigned.crt &&
+          openssl genrsa -out /ssl/nginx-selfsigned.key 2048 &&
           openssl req -new -x509 -key /ssl/nginx-selfsigned.key -out /ssl/nginx-selfsigned.crt -days 365 -subj '/C=TW/ST=Taiwan/L=Taipei/O=Dev/CN=localhost' -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1' &&
-          echo 'SSL certificate generated';
+          echo 'SSL keypair generated';
         else
-          echo 'SSL certificate already exists';
+          echo 'SSL certificates already exist';
         fi &&
         chmod 600 /ssl/nginx-selfsigned.key &&
         chmod 644 /ssl/nginx-selfsigned.crt &&
@@ -134,8 +132,10 @@ services:
       - HOST_IP=${HOST_IP:-localhost}
       - DOMAIN_NAME=${DOMAIN_NAME:-localhost}
     depends_on:
-      - backend
-      - ssl-init
+      backend:
+        condition: service_started
+      ssl-init:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   backend:
