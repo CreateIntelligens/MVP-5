@@ -290,3 +290,6 @@ pids
 # 測試檔案
 test_images/
 test_results/
+
+# SSL私鑰（安全考量）
+ssl/*.key
