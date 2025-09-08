@@ -218,25 +218,21 @@ class FileCleanupManager:
     async def start_periodic_cleanup(self):
         """啟動定期清理任務"""
         if not self.config["ENABLE_CLEANUP"]:
-            logger.info("定期清理已停用")
             return
-            
+
         if self.is_running:
-            logger.warning("定期清理任務已在運行")
             return
-            
+
         self.is_running = True
         interval = self.config["CLEANUP_INTERVAL"]
-        
-        logger.info(f"啟動定期清理任務，間隔: {interval/3600:.1f}小時")
-        
+
         try:
             while self.is_running:
                 await asyncio.sleep(interval)
                 if self.is_running:  # 再次檢查，防止在睡眠期間被停止
                     self.cleanup_all()
         except asyncio.CancelledError:
-            logger.info("定期清理任務已取消")
+            pass  # 應用關閉時取消任務，靜默處理不記錄錯誤日誌
         except Exception as e:
             logger.error(f"定期清理任務錯誤: {e}")
         finally:

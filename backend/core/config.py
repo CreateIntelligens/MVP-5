@@ -269,20 +269,79 @@ LOGGING_CONFIG = {
     "disable_existing_loggers": False,
     "formatters": {
         "default": {
-            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            "format": "%(asctime)s [%(levelname)s] %(name)s - %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S"
+        },
+        "detailed": {
+            "format": "%(asctime)s [%(levelname)s] %(name)s:%(lineno)d - %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S"
         },
     },
     "handlers": {
-        "default": {
+        "console": {
             "formatter": "default",
             "class": "logging.StreamHandler",
             "stream": "ext://sys.stdout",
         },
+        "file": {
+            "formatter": "detailed",
+            "class": "logging.FileHandler",
+            "filename": "logs/app.log",
+            "encoding": "utf-8",
+        },
     },
     "root": {
         "level": "INFO",
-        "handlers": ["default"],
+        "handlers": ["console"],
     },
+    "loggers": {
+        "backend.core.file_cleanup": {
+            "level": "INFO",
+            "handlers": ["console", "file"],
+            "propagate": False
+        },
+        "backend.api.face_swap": {
+            "level": "INFO",
+            "handlers": ["console", "file"],
+            "propagate": False
+        },
+        "backend.core.face_processor": {
+            "level": "INFO",
+            "handlers": ["console", "file"],
+            "propagate": False
+        },
+        "backend.api.templates": {
+            "level": "INFO",
+            "handlers": ["console", "file"],
+            "propagate": False
+        },
+        # 過濾掉其他不重要的日誌
+        "uvicorn": {
+            "level": "WARNING",
+            "handlers": ["console"],
+            "propagate": False
+        },
+        "fastapi": {
+            "level": "WARNING",
+            "handlers": ["console"],
+            "propagate": False
+        },
+        "PIL": {
+            "level": "WARNING",
+            "handlers": ["console"],
+            "propagate": False
+        },
+        "insightface": {
+            "level": "WARNING",
+            "handlers": ["console"],
+            "propagate": False
+        },
+        "onnxruntime": {
+            "level": "WARNING",
+            "handlers": ["console"],
+            "propagate": False
+        }
+    }
 }
 
 # 安全配置
@@ -304,11 +363,11 @@ FILE_CLEANUP_CONFIG = {
     "ENABLE_CLEANUP": True,  # 是否啟用自動清理
     "RESULT_FILE_TTL": 31 * 24 * 3600,  # 結果檔案保留時間（秒）- 31天
     "UPLOAD_FILE_TTL": 31 * 24 * 3600,  # 上傳檔案保留時間（秒）- 31天
-    "MAX_RESULT_FILES": 1000,  # 最大結果檔案數量（增加以支援長期儲存）
-    "MAX_UPLOAD_FILES": 1000,  # 最大上傳檔案數量（增加以支援長期儲存）
+    "MAX_RESULT_FILES": 1000,  # 最大結果檔案數量
+    "MAX_UPLOAD_FILES": 1000,  # 最大上傳檔案數量
     "CLEANUP_INTERVAL": 24 * 3600,  # 清理檢查間隔（秒）- 24小時
     "CLEANUP_ON_STARTUP": True,  # 啟動時是否清理
-    "CLEANUP_AFTER_PROCESS": False,  # 處理完成後不立即清理上傳檔案（保留31天）
+    "CLEANUP_AFTER_PROCESS": False,  # 處理完成後不立即清理上傳檔案
 }
 
 # 監控配置
