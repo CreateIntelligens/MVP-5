@@ -259,10 +259,7 @@ async def swap_face(
             source_face_index,
             target_face_index
         )
-        
-        # 背景任務：清理舊檔案
-        background_tasks.add_task(cleanup_old_results, max_age_hours=24)
-        
+
         logger.info(f"已提交換臉任務：{task_id}")
         
         return {

@@ -11,8 +11,12 @@ from api.face_swap import router as face_swap_router
 from api.templates import router as templates_router
 
 # 導入配置和清理模組
-from core.config import ensure_directories, FILE_CLEANUP_CONFIG
+from core.config import ensure_directories, FILE_CLEANUP_CONFIG, LOGGING_CONFIG
 from core.file_cleanup import get_cleanup_manager, cleanup_now, get_storage_stats
+
+# 設定日誌
+import logging.config
+logging.config.dictConfig(LOGGING_CONFIG)
 
 # 建立 FastAPI 應用
 app = FastAPI(
