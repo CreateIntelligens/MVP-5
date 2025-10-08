@@ -15,9 +15,19 @@ import subprocess
 import sys
 
 from .config import MODEL_CONFIG, get_model_path, RESULTS_DIR, UPLOADS_DIR
+import gc
+import threading
 
 # 設定日誌
 logger = logging.getLogger(__name__)
+
+# 處理計數器 (用於定期清理GPU記憶體)
+_process_counter = 0
+_counter_lock = threading.Lock()  # 保護計數器的鎖
+
+# GPU操作鎖 - 確保同時只有一個線程使用GPU
+_gpu_lock = threading.Lock()
+
 
 def check_gpu_availability():
     """檢查GPU是否可用"""
@@ -43,9 +53,9 @@ def check_gpu_availability():
 
 class FaceProcessor:
     """臉部處理器"""
-    
+
     def __init__(self):
-        """初始化臉部處理器"""
+        """初始化臉部處理器 (GPU模式)"""
         self.face_app = None
         self.swapper = None
         self._initialize_models()
@@ -60,15 +70,15 @@ class FaceProcessor:
             
             # 檢查GPU可用性
             gpu_available, provider = check_gpu_availability()
-            self.gpu_available = gpu_available
-            
-            # 設定計算設備
+
             if gpu_available:
+                self.gpu_available = True
                 ctx_id = 0  # GPU
-                logger.info("使用GPU模式")
+                logger.info("使用 GPU 模式")
             else:
+                self.gpu_available = False
                 ctx_id = -1  # CPU
-                logger.info("使用CPU模式")
+                logger.info("GPU 不可用,使用 CPU 模式")
             
             # 初始化臉部分析模型
             self.face_app = FaceAnalysis(name=MODEL_CONFIG["FACE_ANALYSIS_MODEL"])
@@ -253,21 +263,21 @@ class FaceProcessor:
             return image
     
     def swap_faces(
-        self, 
-        source_image: np.ndarray, 
+        self,
+        source_image: np.ndarray,
         target_image: np.ndarray,
         source_face_index: int = 0,
         target_face_index: int = 0
     ) -> np.ndarray:
         """
         執行換臉操作
-        
+
         Args:
             source_image: 來源圖片（提供臉部）
             target_image: 目標圖片（被替換臉部）
             source_face_index: 來源臉部索引
             target_face_index: 目標臉部索引
-            
+
         Returns:
             np.ndarray: 換臉後的圖片
         """
@@ -276,7 +286,7 @@ class FaceProcessor:
             source_faces = self.detect_faces(source_image)
             if len(source_faces) == 0:
                 raise ValueError("在來源圖片中沒有偵測到臉部，請上傳清晰的正面照片")
-            
+
             if source_face_index >= len(source_faces):
                 raise ValueError(f"來源圖片只有 {len(source_faces)} 張臉，但指定了第 {source_face_index + 1} 張臉")
             
@@ -293,8 +303,25 @@ class FaceProcessor:
             target_face = target_faces[target_face_index]
             
             try:
-                # 執行換臉
-                result = self.swapper.get(target_image, target_face, source_face, paste_back=True)
+                # GPU處理需要鎖保護,避免CUDA並發衝突
+                if self.gpu_available:
+                    with _gpu_lock:  # CUDA不支持多線程並發,強制串行
+                        result = self.swapper.get(target_image, target_face, source_face, paste_back=True)
+                else:
+                    # CPU fallback
+                    result = self.swapper.get(target_image, target_face, source_face, paste_back=True)
+
+                # 計數器
+                global _process_counter
+                with _counter_lock:
+                    _process_counter += 1
+                    current_count = _process_counter
+
+                # 輕量級Python物件清理(不清理GPU VRAM,讓CUDA自然管理)
+                if current_count % 50 == 0:
+                    gc.collect(generation=0)
+                    logger.info(f"已處理 {current_count} 次")
+
                 logger.info(f"換臉處理完成 ({'GPU' if self.gpu_available else 'CPU'} 模式)")
                 return result
                 
@@ -474,8 +501,17 @@ class FaceProcessor:
             success = cv2.imwrite(str(result_path), result_image)
             if not success:
                 raise RuntimeError("圖片儲存失敗")
-            
-            logger.info(f"結果已儲存：{result_path}")
+
+            # 確保檔案已寫入並可讀
+            import os
+            if not result_path.exists() or result_path.stat().st_size == 0:
+                raise RuntimeError("圖片儲存後檔案不存在或大小為0")
+
+            # 強制同步到磁碟
+            with open(result_path, 'rb') as f:
+                os.fsync(f.fileno())
+
+            logger.info(f"結果已儲存並同步：{result_path}")
             return str(result_path)
             
         except Exception as e:
@@ -547,11 +583,12 @@ class FaceProcessor:
 _processor_instance = None
 
 def get_face_processor() -> FaceProcessor:
-    """獲取臉部處理器實例（單例模式）"""
+    """獲取臉部處理器實例（單例模式）- 默認GPU"""
     global _processor_instance
     if _processor_instance is None:
         _processor_instance = FaceProcessor()
     return _processor_instance
+
 
 def get_system_info() -> dict:
     """獲取系統資訊，包括GPU狀態"""

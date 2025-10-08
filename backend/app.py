@@ -118,16 +118,32 @@ async def startup_event():
         asyncio.create_task(cleanup_manager.start_periodic_cleanup())
         print(f"⏰ 定期清理已啟動，間隔: {FILE_CLEANUP_CONFIG['CLEANUP_INTERVAL']/3600:.1f}小時")
     
+    # 測試 Redis 連接
+    try:
+        from core.redis_client import test_redis_connection
+        if test_redis_connection():
+            print("✅ Redis 連接成功")
+        else:
+            print("⚠️  Redis 連接失敗,部分功能可能無法使用")
+    except Exception as e:
+        print(f"⚠️  Redis 初始化失敗: {e}")
+
     # 模型預熱
     print("🔥 正在預熱 AI 模型...")
+    print("DEBUG: About to import get_face_processor")
     try:
         from core.face_processor import get_face_processor
+        print("DEBUG: Import successful, calling get_face_processor()")
         processor = get_face_processor()
+        print("DEBUG: get_face_processor() returned successfully")
         print("✅ AI 模型預熱完成")
     except Exception as e:
         print(f"⚠️  模型預熱失敗: {e}")
+        import traceback
+        traceback.print_exc()
         print("   首次請求時將進行模型初始化")
-    
+
+    print("DEBUG: About to print startup complete")
     print("🚀 AI 頭像工作室 API 啟動完成")
     print("📱 API 文檔：http://localhost:3001/api/docs")
     print("🔍 健康檢查：http://localhost:3001/api/health")

@@ -363,8 +363,8 @@ FILE_CLEANUP_CONFIG = {
     "ENABLE_CLEANUP": True,  # 是否啟用自動清理
     "RESULT_FILE_TTL": 31 * 24 * 3600,  # 結果檔案保留時間（秒）- 31天
     "UPLOAD_FILE_TTL": 31 * 24 * 3600,  # 上傳檔案保留時間（秒）- 31天
-    "MAX_RESULT_FILES": 1000,  # 最大結果檔案數量
-    "MAX_UPLOAD_FILES": 1000,  # 最大上傳檔案數量
+    "MAX_RESULT_FILES": 5000,  # 最大結果檔案數量
+    "MAX_UPLOAD_FILES": 5000,  # 最大上傳檔案數量
     "CLEANUP_INTERVAL": 24 * 3600,  # 清理檢查間隔（秒）- 24小時
     "CLEANUP_ON_STARTUP": True,  # 啟動時是否清理
     "CLEANUP_AFTER_PROCESS": False,  # 處理完成後不立即清理上傳檔案

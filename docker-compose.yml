@@ -1,5 +1,5 @@
 services:
-  # 模型下載服務（一次性，完成後自動清理）
+  # 模型下載服務（第一次啟動會下載模型檔案，完成後容器保持停止狀態）
   model-downloader:
     build:
       context: .
@@ -18,20 +18,20 @@ services:
           if wget --timeout=60 --tries=3 --progress=bar:force:noscroll -O /app/models/inswapper_128.onnx 'https://huggingface.co/spaces/mkrzyzan/face-swap/resolve/main/inswapper_128.onnx'; then
             # 安全獲取檔案大小
             if [ -f /app/models/inswapper_128.onnx ]; then
-              FILE_SIZE=$(stat -c%s /app/models/inswapper_128.onnx 2>/dev/null || echo "0")
-              FILE_SIZE=${FILE_SIZE:-0}
-              echo "📊 下載檔案大小: $FILE_SIZE bytes"
+              FILE_SIZE=$$(stat -c%s /app/models/inswapper_128.onnx 2>/dev/null || echo \"0\")
+              FILE_SIZE=$${FILE_SIZE:-0}
+              echo \"📊 下載檔案大小: $$FILE_SIZE bytes\"
               
               # 驗證檔案大小（正常應該約為 256MB = 268435456 bytes）
-              if [ $FILE_SIZE -lt 200000000 ]; then
+              if [ $$FILE_SIZE -lt 200000000 ]; then
                 echo '❌ 檔案太小，可能下載不完整，嘗試備用下載源...'
                 rm -f /app/models/inswapper_128.onnx
                 echo '📥 嘗試從 GitHub 下載...'
                 wget --timeout=60 --tries=3 --progress=bar:force:noscroll -O /app/models/inswapper_128.onnx 'https://github.com/facefusion/facefusion-assets/releases/download/models/inswapper_128.onnx'
                 if [ -f /app/models/inswapper_128.onnx ]; then
-                  FILE_SIZE=$(stat -c%s /app/models/inswapper_128.onnx 2>/dev/null || echo "0")
-                  FILE_SIZE=${FILE_SIZE:-0}
-                  echo "📊 備用源檔案大小: $FILE_SIZE bytes"
+                  FILE_SIZE=$$(stat -c%s /app/models/inswapper_128.onnx 2>/dev/null || echo \"0\")
+                  FILE_SIZE=$${FILE_SIZE:-0}
+                  echo \"📊 備用源檔案大小: $$FILE_SIZE bytes\"
                 }
               }
             }
@@ -40,24 +40,24 @@ services:
             echo '📥 嘗試從 GitHub 下載...'
             wget --timeout=60 --tries=3 --progress=bar:force:noscroll -O /app/models/inswapper_128.onnx 'https://github.com/facefusion/facefusion-assets/releases/download/models/inswapper_128.onnx'
             if [ -f /app/models/inswapper_128.onnx ]; then
-              FILE_SIZE=$(stat -c%s /app/models/inswapper_128.onnx 2>/dev/null || echo "0")
-              FILE_SIZE=${FILE_SIZE:-0}
-              echo "📊 備用源檔案大小: $FILE_SIZE bytes"
+              FILE_SIZE=$$(stat -c%s /app/models/inswapper_128.onnx 2>/dev/null || echo \"0\")
+              FILE_SIZE=$${FILE_SIZE:-0}
+              echo \"📊 備用源檔案大小: $$FILE_SIZE bytes\"
             }
           }
           
           # 最終驗證
           if [ -f /app/models/inswapper_128.onnx ]; then
-            FILE_SIZE=$(stat -c%s /app/models/inswapper_128.onnx 2>/dev/null || echo "0")
-            FILE_SIZE=${FILE_SIZE:-0}
-            if [ $FILE_SIZE -lt 200000000 ]; then
+            FILE_SIZE=$$(stat -c%s /app/models/inswapper_128.onnx 2>/dev/null || echo \"0\")
+            FILE_SIZE=$${FILE_SIZE:-0}
+            if [ $$FILE_SIZE -lt 200000000 ]; then
               echo '❌ 所有下載源都失敗或檔案損壞，請檢查網路連接'
               rm -f /app/models/inswapper_128.onnx
               exit 1
             else
-              echo "✅ AI 模型下載成功！檔案大小: $FILE_SIZE bytes"
+              echo \"✅ AI 模型下載成功！檔案大小: $$FILE_SIZE bytes\"
               # 嘗試驗證檔案是否為有效的 ONNX 檔案
-              if python3 -c "import onnx; onnx.load('/app/models/inswapper_128.onnx'); print('✅ ONNX 檔案格式驗證通過')" 2>/dev/null; then
+              if python3 -c \"import onnx; onnx.load('/app/models/inswapper_128.onnx'); print('✅ ONNX 檔案格式驗證通過')\" 2>/dev/null; then
                 echo '✅ 模型檔案驗證完成'
               else
                 echo '⚠️  無法驗證 ONNX 格式，但檔案大小正常'
@@ -72,9 +72,9 @@ services:
         else
           echo '✅ AI 模型已存在，跳過下載'
           if [ -f /app/models/inswapper_128.onnx ]; then
-            FILE_SIZE=$(stat -c%s /app/models/inswapper_128.onnx 2>/dev/null || echo "0")
-            FILE_SIZE=${FILE_SIZE:-0}
-            echo "📊 現有檔案大小: $FILE_SIZE bytes"
+            FILE_SIZE=$$(stat -c%s /app/models/inswapper_128.onnx 2>/dev/null || echo \"0\")
+            FILE_SIZE=$${FILE_SIZE:-0}
+            echo \"📊 現有檔案大小: $$FILE_SIZE bytes\"
             ls -lh /app/models/inswapper_128.onnx
           else
             echo '⚠️  模型檔案不存在，但目錄檢查顯示存在'
