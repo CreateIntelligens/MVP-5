@@ -120,9 +120,58 @@ async def startup_event():
     
     # 測試 Redis 連接
     try:
-        from core.redis_client import test_redis_connection
+        from core.redis_client import test_redis_connection, redis_client, TASK_KEY_PREFIX
         if test_redis_connection():
             print("✅ Redis 連接成功")
+
+            # 清理孤兒任務（pending/processing 狀態的任務）
+            print("🧹 正在檢查孤兒任務...")
+            try:
+                import json
+                from datetime import datetime
+
+                # 掃描所有任務
+                task_keys = redis_client.keys(f"{TASK_KEY_PREFIX}*")
+                orphan_count = 0
+
+                for task_key in task_keys:
+                    task_data = redis_client.get(task_key)
+                    if task_data:
+                        task = json.loads(task_data)
+                        status = task.get("status")
+
+                        # 如果任務是 pending 或 processing，標記為失敗
+                        if status in ["pending", "processing"]:
+                            task["status"] = "failed"
+                            task["progress"] = 0
+                            task["message"] = "系統重啟，任務已取消"
+                            task["error"] = "Backend restarted while task was in progress"
+                            task["failed_at"] = datetime.now().isoformat()
+
+                            # 更新任務狀態
+                            redis_client.setex(
+                                task_key,
+                                172800,  # 保持原有 TTL (48小時)
+                                json.dumps(task, ensure_ascii=False)
+                            )
+                            orphan_count += 1
+
+                if orphan_count > 0:
+                    print(f"✅ 已清理 {orphan_count} 個孤兒任務")
+                else:
+                    print("✅ 沒有發現孤兒任務")
+
+                # 重置佇列大小計數器
+                from core.redis_client import QUEUE_SIZE_KEY, GPU_LOCK_KEY
+                redis_client.set(QUEUE_SIZE_KEY, 0)
+                print("✅ 佇列大小計數器已重置")
+
+                # 清理 GPU 鎖 (避免舊鎖阻塞新任務)
+                redis_client.delete(GPU_LOCK_KEY)
+                print("✅ GPU 鎖已清理")
+
+            except Exception as e:
+                print(f"⚠️  清理孤兒任務失敗: {e}")
         else:
             print("⚠️  Redis 連接失敗,部分功能可能無法使用")
     except Exception as e:

@@ -97,7 +97,7 @@ class FileCleanupManager:
                         file_path.unlink()
                         cleaned_count += 1
                         cleaned_size += file_size
-                        logger.info(f"已清理多餘檔案: {file_path.name}")
+                        # logger.info(f"已清理多餘檔案: {file_path.name}")
                     except Exception as e:
                         logger.error(f"清理檔案失敗 {file_path}: {e}")
                         

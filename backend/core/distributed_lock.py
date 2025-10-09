@@ -12,13 +12,13 @@ logger = logging.getLogger(__name__)
 class RedisLock:
     """Redis 分散式鎖 (用於 GPU 串行處理)"""
 
-    def __init__(self, key: str = GPU_LOCK_KEY, timeout: int = 600):
+    def __init__(self, key: str = GPU_LOCK_KEY, timeout: int = 1800):
         """
         初始化分散式鎖
 
         Args:
             key: Redis key 名稱
-            timeout: 鎖超時時間 (秒),避免死鎖
+            timeout: 鎖超時時間 (秒) - 30 分鐘避免死鎖
         """
         self.key = key
         self.timeout = timeout
@@ -31,8 +31,8 @@ class RedisLock:
             if redis_client.set(self.key, self.identifier, nx=True, ex=self.timeout):
                 logger.debug(f"獲取鎖成功: {self.key} ({self.identifier})")
                 return True
-            # 沒拿到鎖,等待 100ms 後重試
-            await asyncio.sleep(0.1)
+            # 沒拿到鎖,等待 50ms 後重試
+            await asyncio.sleep(0.05)
 
     async def release(self):
         """釋放鎖 (使用 Lua script 保證原子性)"""

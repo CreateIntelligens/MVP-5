@@ -27,22 +27,8 @@ logger = logging.getLogger(__name__)
 # 建立路由器
 router = APIRouter()
 
-# 配置
-MAX_QUEUE_SIZE = 4000  # 高流量佇列容量
-MAX_CONCURRENT_TASKS = 4000  # 限制同時等待的任務數量（避免 event loop 阻塞）
-
-# 線程池 - GPU操作
+# 線程池 - GPU操作 (單線程串行)
 executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="gpu_worker")
-
-# 任務並發控制（延遲初始化，因為需要 event loop）
-task_semaphore = None
-
-def get_task_semaphore():
-    """獲取或創建 task semaphore"""
-    global task_semaphore
-    if task_semaphore is None:
-        task_semaphore = asyncio.Semaphore(MAX_CONCURRENT_TASKS)
-    return task_semaphore
 
 # ==================== Redis 工具函數 ====================
 
@@ -54,10 +40,10 @@ def get_task_status(task_id: str) -> dict:
     return None
 
 def set_task_status(task_id: str, status: dict):
-    """設置任務狀態到 Redis (TTL 24小時)"""
+    """設置任務狀態到 Redis (TTL 48 小時)"""
     redis_client.setex(
         f"{TASK_KEY_PREFIX}{task_id}",
-        86400,  # 24 小時過期
+        172800,  # 48 小時過期
         json.dumps(status, ensure_ascii=False)
     )
 
@@ -116,122 +102,132 @@ async def process_face_swap_task(
     template_id: str,
     template_content: Optional[bytes] = None,
     source_face_index: int = 0,
-    target_face_index: int = 0
+    target_face_index: int = 0,
+    initial_queue_size: Optional[int] = None
 ):
     """背景任務：執行換臉處理 (使用 Redis 分散式鎖)"""
 
-    # 先獲取任務 semaphore，限制同時等待的任務數
-    async with get_task_semaphore():
-        async with RedisLock():
-            incr_queue_size()
-            logger.info(f"開始處理背景換臉任務 {task_id}，佇列大小: {get_queue_size()}")
+    async with RedisLock():
+        logger.info(
+            f"開始處理背景換臉任務 {task_id}，提交時佇列大小: "
+            f"{initial_queue_size if initial_queue_size is not None else 'unknown'}"
+        )
 
+        try:
+            # 更新任務狀態：開始處理
+            update_task_status(task_id, {
+                "status": "processing",
+                "progress": 10,
+                "message": "正在初始化 AI 模型...",
+                "queue_position": 1,
+                "queue_ahead": 0
+            })
+
+            # 獲取臉部處理器
+            processor = get_face_processor()
+            logger.info(f"任務 {task_id} 使用 GPU 處理")
+
+            # 更新進度：模型載入完成
+            update_task_status(task_id, {
+                "progress": 30,
+                "message": "正在偵測臉部特徵...",
+                "queue_position": 1,
+                "queue_ahead": 0
+            })
+
+            # 處理模板
+            if template_id == "custom" and template_content:
+                template_info = {"description": "使用者自訂模板"}
+                template_name = "自訂模板"
+
+                loop = asyncio.get_event_loop()
+                process_result = await loop.run_in_executor(
+                    executor,
+                    processor.process_image_data,
+                    file_content,
+                    template_content,
+                    source_face_index,
+                    target_face_index,
+                    task_id
+                )
+            else:
+                template_info = TEMPLATE_CONFIG["TEMPLATES"][template_id]
+                template_path = get_template_path(template_id)
+                template_name = template_info["name"]
+
+                update_task_status(task_id, {
+                    "progress": 50,
+                    "message": "AI 正在進行換臉處理...",
+                    "queue_position": 1,
+                    "queue_ahead": 0
+                })
+
+                loop = asyncio.get_event_loop()
+                process_result = await loop.run_in_executor(
+                    executor,
+                    processor.process_image_file,
+                    file_content,
+                    template_path,
+                    source_face_index,
+                    target_face_index,
+                    task_id
+                )
+
+            update_task_status(task_id, {
+                "progress": 90,
+                "message": "正在生成最終結果...",
+                "queue_position": 1,
+                "queue_ahead": 0
+            })
+
+            result_path = process_result["result_path"]
+            original_path = process_result["original_path"]
+
+            result_filename = Path(result_path).name
+            result_url = f"/results/{result_filename}"
+
+            original_filename = Path(original_path).name
+            original_url = f"/uploads/{original_filename}"
+
+            update_task_status(task_id, {
+                "status": "completed",
+                "progress": 100,
+                "message": "換臉處理完成",
+                "result_url": result_url,
+                "original_url": original_url,
+                "template_id": template_id,
+                "template_name": template_name,
+                "template_description": template_info["description"],
+                "completed_at": datetime.now().isoformat(),
+                "queue_position": 0,
+                "queue_ahead": 0
+            })
+
+            logger.info(f"任務 {task_id} 換臉處理完成：{result_url}")
+
+        except Exception as e:
+            update_task_status(task_id, {
+                "status": "failed",
+                "progress": 0,
+                "message": f"換臉處理失敗：{str(e)}",
+                "error": str(e),
+                "failed_at": datetime.now().isoformat(),
+                "queue_position": 0,
+                "queue_ahead": 0
+            })
+
+            logger.error(f"任務 {task_id} 換臉處理失敗：{e}")
+
+        finally:
             try:
-                # 更新任務狀態：開始處理
-                update_task_status(task_id, {
-                    "status": "processing",
-                    "progress": 10,
-                    "message": "正在初始化 AI 模型..."
-                })
-
-                # 獲取臉部處理器
-                processor = get_face_processor()
-                logger.info(f"任務 {task_id} 使用 GPU 處理")
-
-                # 更新進度：模型載入完成
-                update_task_status(task_id, {
-                    "progress": 30,
-                    "message": "正在偵測臉部特徵..."
-                })
-
-                # 處理模板
-                if template_id == "custom" and template_content:
-                    template_info = {"description": "使用者自訂模板"}
-                    template_name = "自訂模板"
-
-                    # 執行換臉處理（使用對應的executor）
-                    loop = asyncio.get_event_loop()
-                    process_result = await loop.run_in_executor(
-                        executor,
-                        processor.process_image_data,
-                        file_content,
-                        template_content,
-                        source_face_index,
-                        target_face_index,
-                        task_id
-                    )
-                    result_path = process_result["result_path"]
-                    original_path = process_result["original_path"]
-                else:
-                    # 使用預設模板
-                    template_info = TEMPLATE_CONFIG["TEMPLATES"][template_id]
-                    template_path = get_template_path(template_id)
-                    template_name = template_info["name"]
-
-                    # 更新進度：開始換臉處理
-                    update_task_status(task_id, {
-                        "progress": 50,
-                        "message": "AI 正在進行換臉處理..."
-                    })
-
-                    # 執行換臉處理（使用對應的executor）
-                    loop = asyncio.get_event_loop()
-                    process_result = await loop.run_in_executor(
-                        executor,
-                        processor.process_image_file,
-                        file_content,
-                        template_path,
-                        source_face_index,
-                        target_face_index,
-                        task_id
-                    )
-                    result_path = process_result["result_path"]
-                    original_path = process_result["original_path"]
-
-                # 更新進度：生成結果
-                update_task_status(task_id, {
-                    "progress": 90,
-                    "message": "正在生成最終結果..."
-                })
-
-                # 生成結果 URL
-                result_filename = Path(result_path).name
-                result_url = f"/results/{result_filename}"
-
-                # 生成原圖 URL
-                original_filename = Path(original_path).name
-                original_url = f"/uploads/{original_filename}"
-
-                # 任務完成
-                update_task_status(task_id, {
-                    "status": "completed",
-                    "progress": 100,
-                    "message": "換臉處理完成",
-                    "result_url": result_url,
-                    "original_url": original_url,
-                    "template_id": template_id,
-                    "template_name": template_name,
-                    "template_description": template_info["description"],
-                    "completed_at": datetime.now().isoformat()
-                })
-
-                logger.info(f"任務 {task_id} 換臉處理完成：{result_url}")
-
-            except Exception as e:
-                # 任務失敗
-                update_task_status(task_id, {
-                    "status": "failed",
-                    "progress": 0,
-                    "message": f"換臉處理失敗：{str(e)}",
-                    "error": str(e),
-                    "failed_at": datetime.now().isoformat()
-                })
-
-                logger.error(f"任務 {task_id} 換臉處理失敗：{e}")
-
-            finally:
-                decr_queue_size()
-                logger.info(f"背景換臉任務 {task_id} 完成，佇列大小: {get_queue_size()}")
+                remaining_queue_size = decr_queue_size()
+            except Exception as redis_error:
+                logger.warning(f"任務 {task_id} 更新佇列大小失敗：{redis_error}")
+                remaining_queue_size = "unknown"
+            logger.info(f"背景換臉任務 {task_id} 完成，佇列大小: {remaining_queue_size}")
+            update_task_status(task_id, {
+                "queue_remaining": remaining_queue_size
+            })
 
 @router.post("/face-swap")
 async def swap_face(
@@ -253,17 +249,9 @@ async def swap_face(
     - **target_face_index**: 模板圖片中的臉部索引 (預設: 0)
     """
     try:
-        # 提前生成task_id避免壓測時丟失
-        task_id = str(uuid.uuid4())
+        # 生成 task_id
 
-        # 檢查佇列大小
-        current_queue_size = get_queue_size()
-        if current_queue_size >= MAX_QUEUE_SIZE:
-            logger.warning(f"任務 {task_id} 被拒絕：佇列已滿 ({current_queue_size}/{MAX_QUEUE_SIZE})")
-            raise HTTPException(
-                status_code=503,
-                detail=f"伺服器忙碌中，請稍後再試 (佇列:{current_queue_size}/{MAX_QUEUE_SIZE})"
-            )
+        task_id = str(uuid.uuid4())
 
         # 自動判斷使用自訂模板還是預設模板
         if template_file and template_file.filename:
@@ -310,6 +298,16 @@ async def swap_face(
             "error": None
         })
         
+        # 增加佇列計數
+        queue_size = incr_queue_size()
+        queue_ahead = queue_size - 1 if queue_size > 0 else 0
+
+        update_task_status(task_id, {
+            "queue_position": queue_size,
+            "queue_ahead": queue_ahead,
+            "initial_queue_position": queue_size
+        })
+
         # 啟動背景任務（使用 asyncio.create_task 而非 BackgroundTasks）
         asyncio.create_task(
             process_face_swap_task(
@@ -318,17 +316,20 @@ async def swap_face(
                 template_id,
                 template_content,
                 source_face_index,
-                target_face_index
+                target_face_index,
+                queue_size
             )
         )
 
-        logger.info(f"已提交換臉任務：{task_id}")
+        logger.info(f"已提交換臉任務：{task_id}，當前佇列大小: {queue_size}")
         
         return {
             "success": True,
             "message": "任務已提交，請使用任務 ID 查詢處理狀態",
             "task_id": task_id,
-            "status": "pending"
+            "status": "pending",
+            "queue_position": queue_size,
+            "queue_ahead": queue_ahead
         }
         
     except HTTPException:
@@ -353,9 +354,16 @@ async def get_task_status_api(task_id: str):
         if not status:
             raise HTTPException(status_code=404, detail="任務不存在")
 
+        queue_size_snapshot = None
+        try:
+            queue_size_snapshot = get_queue_size()
+        except Exception as redis_error:
+            logger.warning(f"取得目前佇列大小失敗：{redis_error}")
+
         return {
             "success": True,
-            "task_status": status
+            "task_status": status,
+            "queue_size": queue_size_snapshot
         }
 
     except HTTPException:
@@ -657,7 +665,7 @@ async def get_queue_status_api():
             "success": True,
             "queue_status": {
                 "current_queue_size": get_queue_size(),
-                "max_queue_size": MAX_QUEUE_SIZE,
+                "max_queue_size": "unlimited",  # 無限排隊模式
                 "gpu_lock_active": bool(gpu_lock_exists),
                 "max_concurrent": 1  # GPU串行處理
             },
@@ -769,18 +777,15 @@ async def swapper(
         target_face_index: 模板圖片中的臉部索引 (預設: 0)
     """
     try:
-        # 檢查佇列並限制並發
-        current_queue_size = get_queue_size()
-        if current_queue_size >= MAX_QUEUE_SIZE:
-            logger.warning(f"同步請求被拒絕：佇列已滿 ({current_queue_size}/{MAX_QUEUE_SIZE})")
-            raise HTTPException(
-                status_code=503,
-                detail=f"伺服器忙碌中，請稍後再試 (佇列:{current_queue_size}/{MAX_QUEUE_SIZE})"
-            )
-
+        sync_task_id = f"sync-{uuid.uuid4()}"
         async with RedisLock():
-            incr_queue_size()
-            logger.info(f"開始處理同步換臉請求，佇列大小: {get_queue_size()}")
+            sync_queue_size: Optional[object] = None
+            try:
+                sync_queue_size = get_queue_size()
+            except Exception as redis_error:
+                logger.warning(f"同步任務 {sync_task_id} 無法取得佇列大小：{redis_error}")
+                sync_queue_size = "unknown"
+            logger.info(f"開始處理同步換臉請求，佇列大小: {sync_queue_size}")
             
             try:
                 # 自動判斷使用自訂模板還是預設模板
@@ -875,8 +880,12 @@ async def swapper(
                     "message": "換臉處理完成"
                 }
             finally:
-                decr_queue_size()
-                logger.info(f"同步換臉請求完成，佇列大小: {get_queue_size()}")
+                try:
+                    final_queue_size = get_queue_size()
+                except Exception as redis_error:
+                    logger.warning(f"同步任務 {sync_task_id} 更新佇列大小失敗：{redis_error}")
+                    final_queue_size = "unknown"
+                logger.info(f"同步換臉請求完成，佇列大小: {final_queue_size}")
         
     except HTTPException:
         # 重新拋出 HTTP 異常

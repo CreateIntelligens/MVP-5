@@ -9,77 +9,56 @@ services:
       - ./backend:/app
     command: >
       sh -c "
-        if [ ! -f /app/models/inswapper_128.onnx ]; then
-          echo '🔄 正在下載 AI 模型檔案...'
-          mkdir -p /app/models
-          
-          # 嘗試第一個下載源
-          echo '📥 嘗試從 HuggingFace 下載...'
-          if wget --timeout=60 --tries=3 --progress=bar:force:noscroll -O /app/models/inswapper_128.onnx 'https://huggingface.co/spaces/mkrzyzan/face-swap/resolve/main/inswapper_128.onnx'; then
-            # 安全獲取檔案大小
-            if [ -f /app/models/inswapper_128.onnx ]; then
-              FILE_SIZE=$$(stat -c%s /app/models/inswapper_128.onnx 2>/dev/null || echo \"0\")
-              FILE_SIZE=$${FILE_SIZE:-0}
-              echo \"📊 下載檔案大小: $$FILE_SIZE bytes\"
-              
-              # 驗證檔案大小（正常應該約為 256MB = 268435456 bytes）
-              if [ $$FILE_SIZE -lt 200000000 ]; then
-                echo '❌ 檔案太小，可能下載不完整，嘗試備用下載源...'
-                rm -f /app/models/inswapper_128.onnx
-                echo '📥 嘗試從 GitHub 下載...'
-                wget --timeout=60 --tries=3 --progress=bar:force:noscroll -O /app/models/inswapper_128.onnx 'https://github.com/facefusion/facefusion-assets/releases/download/models/inswapper_128.onnx'
-                if [ -f /app/models/inswapper_128.onnx ]; then
-                  FILE_SIZE=$$(stat -c%s /app/models/inswapper_128.onnx 2>/dev/null || echo \"0\")
-                  FILE_SIZE=$${FILE_SIZE:-0}
-                  echo \"📊 備用源檔案大小: $$FILE_SIZE bytes\"
-                }
-              }
-            }
-          else
-            echo '❌ 第一個下載源失敗，嘗試備用下載源...'
-            echo '📥 嘗試從 GitHub 下載...'
-            wget --timeout=60 --tries=3 --progress=bar:force:noscroll -O /app/models/inswapper_128.onnx 'https://github.com/facefusion/facefusion-assets/releases/download/models/inswapper_128.onnx'
-            if [ -f /app/models/inswapper_128.onnx ]; then
-              FILE_SIZE=$$(stat -c%s /app/models/inswapper_128.onnx 2>/dev/null || echo \"0\")
-              FILE_SIZE=$${FILE_SIZE:-0}
-              echo \"📊 備用源檔案大小: $$FILE_SIZE bytes\"
-            }
-          }
-          
-          # 最終驗證
-          if [ -f /app/models/inswapper_128.onnx ]; then
-            FILE_SIZE=$$(stat -c%s /app/models/inswapper_128.onnx 2>/dev/null || echo \"0\")
-            FILE_SIZE=$${FILE_SIZE:-0}
-            if [ $$FILE_SIZE -lt 200000000 ]; then
-              echo '❌ 所有下載源都失敗或檔案損壞，請檢查網路連接'
-              rm -f /app/models/inswapper_128.onnx
-              exit 1
-            else
-              echo \"✅ AI 模型下載成功！檔案大小: $$FILE_SIZE bytes\"
-              # 嘗試驗證檔案是否為有效的 ONNX 檔案
-              if python3 -c \"import onnx; onnx.load('/app/models/inswapper_128.onnx'); print('✅ ONNX 檔案格式驗證通過')\" 2>/dev/null; then
-                echo '✅ 模型檔案驗證完成'
-              else
-                echo '⚠️  無法驗證 ONNX 格式，但檔案大小正常'
-              }
-            }
-          else
-            echo '❌ 模型檔案下載失敗'
-            exit 1
-          }
-          
-          ls -lh /app/models/inswapper_128.onnx
-        else
+        set -e
+        MODEL_PATH=/app/models/inswapper_128.onnx
+        mkdir -p /app/models
+
+        if [ -f \"$$MODEL_PATH\" ]; then
           echo '✅ AI 模型已存在，跳過下載'
-          if [ -f /app/models/inswapper_128.onnx ]; then
-            FILE_SIZE=$$(stat -c%s /app/models/inswapper_128.onnx 2>/dev/null || echo \"0\")
-            FILE_SIZE=$${FILE_SIZE:-0}
-            echo \"📊 現有檔案大小: $$FILE_SIZE bytes\"
-            ls -lh /app/models/inswapper_128.onnx
-          else
-            echo '⚠️  模型檔案不存在，但目錄檢查顯示存在'
-          }
+          FILE_SIZE=$$(stat -c%s \"$$MODEL_PATH\" 2>/dev/null || echo \"0\")
+          FILE_SIZE=$${FILE_SIZE:-0}
+          echo \"📊 現有檔案大小: $$FILE_SIZE bytes\"
+          ls -lh \"$$MODEL_PATH\"
+          exit 0
+        fi
+
+        echo '🔄 正在下載 AI 模型檔案...'
+
+        download_from() {
+          URL=$$1
+          SOURCE_LABEL=$$2
+          echo \"📥 嘗試從 $$SOURCE_LABEL 下載...\"
+          if wget --timeout=60 --tries=3 --progress=bar:force:noscroll -O \"$$MODEL_PATH\" \"$$URL\"; then
+            return 0
+          fi
+          return 1
         }
+
+        download_from 'https://huggingface.co/spaces/mkrzyzan/face-swap/resolve/main/inswapper_128.onnx' 'HuggingFace' || \
+        download_from 'https://github.com/facefusion/facefusion-assets/releases/download/models/inswapper_128.onnx' 'GitHub'
+
+        if [ ! -f \"$$MODEL_PATH\" ]; then
+          echo '❌ 模型檔案下載失敗'
+          exit 1
+        fi
+
+        FILE_SIZE=$$(stat -c%s \"$$MODEL_PATH\" 2>/dev/null || echo \"0\")
+        FILE_SIZE=$${FILE_SIZE:-0}
+        echo \"📊 下載檔案大小: $$FILE_SIZE bytes\"
+
+        if [ $$FILE_SIZE -lt 200000000 ]; then
+          echo '❌ 檔案太小，可能下載不完整'
+          rm -f \"$$MODEL_PATH\"
+          exit 1
+        fi
+
+        if python3 -c \"import onnx; onnx.load('$$MODEL_PATH')\" 2>/dev/null; then
+          echo '✅ 模型檔案驗證完成'
+        else
+          echo '⚠️ 無法驗證 ONNX 格式，但檔案大小正常'
+        fi
+
+        ls -lh \"$$MODEL_PATH\"
       "
     restart: "no"
 
@@ -91,6 +70,7 @@ services:
     volumes:
       - ./frontend:/usr/share/nginx/html
       - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./backend/results:/results:ro
     depends_on:
       - backend
     restart: unless-stopped
@@ -118,8 +98,17 @@ services:
       - PYTHONPATH=/app
       - ENVIRONMENT=development
     privileged: true
-    # 使用開發模式啟動命令，支援自動重載
-    command: ["python", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "3001", "--reload"]
+    # 啟動 uvicorn，調整 backlog 與 keep-alive 以提升高併發連線能力
+    command: [
+      "python", "-m", "uvicorn", "app:app",
+      "--host", "0.0.0.0",
+      "--port", "3001",
+      "--workers", "1",
+      "--backlog", "65535",
+      "--timeout-keep-alive", "600",
+      "--limit-max-requests", "100000",
+      "--log-level", "warning"
+    ]
 
 networks:
   default:

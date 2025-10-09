@@ -90,13 +90,29 @@ services:
       - "6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru
+    # Redis 調整配置
+    command: redis-server
+      --appendonly yes
+      --maxmemory 4gb
+      --maxmemory-policy allkeys-lru
+      --tcp-backlog 2048
+      --timeout 300
+      --tcp-keepalive 60
+      --maxclients 25000
+      --hz 100
+      --databases 16
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+        reservations:
+          memory: 3G
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
-      timeout: 3s
-      retries: 3
+      timeout: 5s
+      retries: 5
 
   frontend:
     image: docker.io/library/nginx:alpine
@@ -106,6 +122,7 @@ services:
     volumes:
       - ./frontend:/usr/share/nginx/html
       - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./backend/results:/results:ro
     depends_on:
       - backend
     restart: unless-stopped
@@ -123,24 +140,35 @@ services:
       - model-downloader
       - redis
     restart: unless-stopped
-    # GPU配置
+    # GPU 資源配置
     deploy:
       resources:
         limits:
-          memory: 8G
+          memory: 16G  # 提高到 16GB
         reservations:
-          memory: 4G
+          memory: 8G  # 提高到 8GB
           devices:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
     environment:
       - PYTHONPATH=/app
-      - ENVIRONMENT=development
+      - ENVIRONMENT=production
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
       - REDIS_URL=redis://redis:6379/0
-    command: ["python", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "3001"]
+    # 無限排隊模式: 單 worker 避免重複
+    command: [
+      "python", "-m", "uvicorn", "app:app",
+      "--host", "0.0.0.0",
+      "--port", "3001",
+      "--workers", "1",  # 單 worker - GPU 串行處理
+      "--backlog", "65535",  # 最大化待處理連接隊列
+      "--timeout-keep-alive", "600",  # Keep-alive timeout 10分鐘
+      # 移除 limit-concurrency - 讓所有請求都能進來排隊
+      # 移除 limit-max-requests - 避免壓測時自動重啟
+      "--log-level", "warning"  # 減少日誌開銷
+    ]
 
 volumes:
   redis_data:
