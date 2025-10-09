@@ -71,6 +71,7 @@ services:
       - ./frontend:/usr/share/nginx/html
       - ./nginx.conf:/etc/nginx/nginx.conf
       - ./backend/results:/results:ro
+      - ./backend/uploads:/uploads:ro
     depends_on:
       - backend
     restart: unless-stopped
