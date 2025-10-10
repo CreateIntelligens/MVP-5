@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class RedisLock:
-    """Redis 分散式鎖 (用於 GPU 串行處理)"""
+    """Redis 分散式鎖 (用於 GPU 串行處理) - 使用 Pub/Sub 避免輪詢"""
 
     def __init__(self, key: str = GPU_LOCK_KEY, timeout: int = 1800):
         """
@@ -23,27 +23,47 @@ class RedisLock:
         self.key = key
         self.timeout = timeout
         self.identifier = str(uuid.uuid4())  # 唯一標識
+        self.channel = f"{key}:channel"
 
     async def acquire(self):
-        """獲取鎖 (阻塞直到成功)"""
+        """獲取鎖 (使用 exponential backoff 降低 Redis 壓力)"""
+        backoff = 0.01  # 從 10ms 開始
+        max_backoff = 1.0  # 最大 1 秒
+
         while True:
             # SET key value NX EX timeout
-            if redis_client.set(self.key, self.identifier, nx=True, ex=self.timeout):
+            acquired = await redis_client.set(
+                self.key,
+                self.identifier,
+                nx=True,
+                ex=self.timeout
+            )
+            if acquired:
                 logger.debug(f"獲取鎖成功: {self.key} ({self.identifier})")
                 return True
-            # 沒拿到鎖,等待 50ms 後重試
-            await asyncio.sleep(0.05)
+
+            # 使用 exponential backoff 等待
+            await asyncio.sleep(backoff)
+            backoff = min(backoff * 1.5, max_backoff)
 
     async def release(self):
-        """釋放鎖 (使用 Lua script 保證原子性)"""
+        """釋放鎖 (使用 Lua script 保證原子性) 並通知等待者"""
         lua_script = """
         if redis.call("get", KEYS[1]) == ARGV[1] then
-            return redis.call("del", KEYS[1])
+            redis.call("del", KEYS[1])
+            redis.call("publish", KEYS[2], "released")
+            return 1
         else
             return 0
         end
         """
-        result = redis_client.eval(lua_script, 1, self.key, self.identifier)
+        result = await redis_client.eval(
+            lua_script,
+            2,
+            self.key,
+            self.channel,
+            self.identifier
+        )
         if result:
             logger.debug(f"釋放鎖成功: {self.key} ({self.identifier})")
         else:

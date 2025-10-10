@@ -141,13 +141,42 @@ services:
       - model-downloader
       - redis
     restart: unless-stopped
-    # GPU 資源配置
+    environment:
+      - PYTHONPATH=/app
+      - ENVIRONMENT=production
+      - REDIS_URL=redis://redis:6379/0
+      - SERVICE_ROLE=api
+    # API 層多 worker，純排隊與查詢
+    command: [
+      "python", "-m", "uvicorn", "app:app",
+      "--host", "0.0.0.0",
+      "--port", "3001",
+      "--workers", "8",
+      "--backlog", "65535",  # 最大化待處理連接隊列
+      "--timeout-keep-alive", "600",  # Keep-alive timeout 10分鐘
+      # 移除 limit-concurrency - 讓所有請求都能進來排隊
+      # 移除 limit-max-requests - 避免壓測時自動重啟
+      "--log-level", "warning"  # 減少日誌開銷
+    ]
+
+  gpu-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.gpu
+    container_name: ai-face-swap-gpu-worker
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - model-downloader
+      - redis
+      - backend
+    restart: unless-stopped
     deploy:
       resources:
         limits:
-          memory: 16G  # 提高到 16GB
+          memory: 16G
         reservations:
-          memory: 8G  # 提高到 8GB
+          memory: 8G
           devices:
             - driver: nvidia
               count: 1
@@ -158,17 +187,10 @@ services:
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
       - REDIS_URL=redis://redis:6379/0
-    # 無限排隊模式: 單 worker 避免重複
+      - SERVICE_ROLE=worker
     command: [
-      "python", "-m", "uvicorn", "app:app",
-      "--host", "0.0.0.0",
-      "--port", "3001",
-      "--workers", "1",  # 單 worker - GPU 串行處理
-      "--backlog", "65535",  # 最大化待處理連接隊列
-      "--timeout-keep-alive", "600",  # Keep-alive timeout 10分鐘
-      # 移除 limit-concurrency - 讓所有請求都能進來排隊
-      # 移除 limit-max-requests - 避免壓測時自動重啟
-      "--log-level", "warning"  # 減少日誌開銷
+      "python",
+      "worker.py"
     ]
 
 volumes:

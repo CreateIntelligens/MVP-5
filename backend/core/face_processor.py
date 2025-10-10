@@ -1,14 +1,23 @@
 """
 臉部處理核心模組
 """
+import os
+from pathlib import Path
+
+# 先設定 InsightFace 的快取目錄，避免匯入後才改變路徑
+_DEFAULT_INSIGHTFACE_HOME = Path(
+    os.environ.get("INSIGHTFACE_HOME")
+    or (Path(__file__).resolve().parent.parent / ".insightface_cache")
+).resolve()
+os.environ["INSIGHTFACE_HOME"] = str(_DEFAULT_INSIGHTFACE_HOME)
+(_DEFAULT_INSIGHTFACE_HOME / "models").mkdir(parents=True, exist_ok=True)
+
 import cv2
 import numpy as np
 from PIL import Image
 import insightface
 from insightface.app import FaceAnalysis
 import uuid
-import os
-from pathlib import Path
 from typing import Optional, Tuple, Union
 import logging
 import subprocess
@@ -17,6 +26,7 @@ import sys
 from .config import MODEL_CONFIG, get_model_path, RESULTS_DIR, UPLOADS_DIR
 import gc
 import threading
+import shutil
 
 # 設定日誌
 logger = logging.getLogger(__name__)
@@ -27,6 +37,17 @@ _counter_lock = threading.Lock()  # 保護計數器的鎖
 
 # GPU操作鎖 - 確保同時只有一個線程使用GPU
 _gpu_lock = threading.Lock()
+
+
+def _reset_insightface_cache():
+    """清理 InsightFace 模型快取，避免與 os.makedirs 競爭"""
+    target_dir = Path(os.environ["INSIGHTFACE_HOME"]) / "models" / MODEL_CONFIG["FACE_ANALYSIS_MODEL"]
+    try:
+        if target_dir.exists():
+            shutil.rmtree(target_dir, ignore_errors=True)
+            logger.warning(f"已清理 InsightFace 模型快取：{target_dir}")
+    except Exception as cleanup_error:  # noqa: BLE001
+        logger.warning(f"清理 InsightFace 模型快取失敗：{cleanup_error}")
 
 
 def check_gpu_availability():
@@ -58,6 +79,7 @@ class FaceProcessor:
         """初始化臉部處理器 (GPU模式)"""
         self.face_app = None
         self.swapper = None
+        self._cache_reset_done = False
         self._initialize_models()
     
     def _initialize_models(self):
@@ -117,6 +139,12 @@ class FaceProcessor:
             logger.info(f"AI 模型載入完成！(使用{'GPU' if gpu_available else 'CPU'}模式)")
             
         except Exception as e:
+            if (isinstance(e, FileExistsError) or "File exists" in str(e)) and not self._cache_reset_done:
+                self._cache_reset_done = True
+                _reset_insightface_cache()
+                logger.warning("InsightFace 模型目錄已存在，重新整理快取後再試一次...")
+                self._initialize_models()
+                return
             # 如果GPU初始化失敗，嘗試CPU模式
             if hasattr(self, 'gpu_available') and self.gpu_available:
                 logger.warning(f"GPU模式初始化失敗：{e}，嘗試CPU模式...")
@@ -167,6 +195,12 @@ class FaceProcessor:
             logger.info("CPU模式初始化完成！")
             
         except Exception as e:
+            if (isinstance(e, FileExistsError) or "File exists" in str(e)) and not self._cache_reset_done:
+                self._cache_reset_done = True
+                _reset_insightface_cache()
+                logger.warning("InsightFace 模型目錄已存在 (CPU 模式)，重新整理快取後再試一次...")
+                self._initialize_cpu_fallback()
+                return
             logger.error(f"CPU模式初始化失敗：{e}")
             raise RuntimeError(f"CPU模式也無法初始化：{e}")
     

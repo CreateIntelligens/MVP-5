@@ -18,6 +18,8 @@ from core.file_cleanup import get_cleanup_manager, cleanup_now, get_storage_stat
 import logging.config
 logging.config.dictConfig(LOGGING_CONFIG)
 
+SERVICE_ROLE = os.getenv("SERVICE_ROLE", "api").lower()
+
 # 建立 FastAPI 應用
 app = FastAPI(
     title="AI 頭像工作室 API",
@@ -120,8 +122,14 @@ async def startup_event():
     
     # 測試 Redis 連接
     try:
-        from core.redis_client import test_redis_connection, redis_client, TASK_KEY_PREFIX
-        if test_redis_connection():
+        from core.redis_client import (
+            test_redis_connection,
+            redis_client,
+            TASK_KEY_PREFIX,
+            QUEUE_SIZE_KEY,
+            GPU_LOCK_KEY,
+        )
+        if await test_redis_connection():
             print("✅ Redis 連接成功")
 
             # 清理孤兒任務（pending/processing 狀態的任務）
@@ -131,11 +139,11 @@ async def startup_event():
                 from datetime import datetime
 
                 # 掃描所有任務
-                task_keys = redis_client.keys(f"{TASK_KEY_PREFIX}*")
+                task_keys = await redis_client.keys(f"{TASK_KEY_PREFIX}*")
                 orphan_count = 0
 
                 for task_key in task_keys:
-                    task_data = redis_client.get(task_key)
+                    task_data = await redis_client.get(task_key)
                     if task_data:
                         task = json.loads(task_data)
                         status = task.get("status")
@@ -149,7 +157,7 @@ async def startup_event():
                             task["failed_at"] = datetime.now().isoformat()
 
                             # 更新任務狀態
-                            redis_client.setex(
+                            await redis_client.setex(
                                 task_key,
                                 172800,  # 保持原有 TTL (48小時)
                                 json.dumps(task, ensure_ascii=False)
@@ -161,13 +169,21 @@ async def startup_event():
                 else:
                     print("✅ 沒有發現孤兒任務")
 
+                # 清除 Redis 任務隊列（清除所有待處理的任務）
+                from core.redis_client import TASK_QUEUE_KEY
+                queue_length = await redis_client.llen(TASK_QUEUE_KEY)
+                if queue_length > 0:
+                    await redis_client.delete(TASK_QUEUE_KEY)
+                    print(f"✅ 已清除 {queue_length} 個待處理任務")
+                else:
+                    print("✅ 任務隊列為空")
+
                 # 重置佇列大小計數器
-                from core.redis_client import QUEUE_SIZE_KEY, GPU_LOCK_KEY
-                redis_client.set(QUEUE_SIZE_KEY, 0)
+                await redis_client.set(QUEUE_SIZE_KEY, 0)
                 print("✅ 佇列大小計數器已重置")
 
                 # 清理 GPU 鎖 (避免舊鎖阻塞新任務)
-                redis_client.delete(GPU_LOCK_KEY)
+                await redis_client.delete(GPU_LOCK_KEY)
                 print("✅ GPU 鎖已清理")
 
             except Exception as e:
@@ -177,20 +193,22 @@ async def startup_event():
     except Exception as e:
         print(f"⚠️  Redis 初始化失敗: {e}")
 
-    # 模型預熱
-    print("🔥 正在預熱 AI 模型...")
-    print("DEBUG: About to import get_face_processor")
-    try:
-        from core.face_processor import get_face_processor
-        print("DEBUG: Import successful, calling get_face_processor()")
-        processor = get_face_processor()
-        print("DEBUG: get_face_processor() returned successfully")
-        print("✅ AI 模型預熱完成")
-    except Exception as e:
-        print(f"⚠️  模型預熱失敗: {e}")
-        import traceback
-        traceback.print_exc()
-        print("   首次請求時將進行模型初始化")
+    if SERVICE_ROLE != "api":
+        print("🔥 正在預熱 AI 模型...")
+        print("DEBUG: About to import get_face_processor")
+        try:
+            from core.face_processor import get_face_processor
+            print("DEBUG: Import successful, calling get_face_processor()")
+            processor = get_face_processor()
+            print("DEBUG: get_face_processor() returned successfully")
+            print("✅ AI 模型預熱完成")
+        except Exception as e:
+            print(f"⚠️  模型預熱失敗: {e}")
+            import traceback
+            traceback.print_exc()
+            print("   首次請求時將進行模型初始化")
+    else:
+        print("⏯️  API 角色，略過啟動時的模型預熱")
 
     print("DEBUG: About to print startup complete")
     print("🚀 AI 頭像工作室 API 啟動完成")

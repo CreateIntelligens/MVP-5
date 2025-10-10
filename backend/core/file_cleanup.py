@@ -54,6 +54,8 @@ class FileCleanupManager:
                             cleaned_count += 1
                             cleaned_size += file_size
                             logger.info(f"已清理過期檔案: {file_path.name} (年齡: {file_age/3600:.1f}小時)")
+                        except FileNotFoundError:
+                            logger.debug(f"過期檔案已不存在，略過: {file_path}")
                         except Exception as e:
                             logger.error(f"清理檔案失敗 {file_path}: {e}")
                             
@@ -98,6 +100,8 @@ class FileCleanupManager:
                         cleaned_count += 1
                         cleaned_size += file_size
                         # logger.info(f"已清理多餘檔案: {file_path.name}")
+                    except FileNotFoundError:
+                        logger.debug(f"多餘檔案已不存在，略過: {file_path}")
                     except Exception as e:
                         logger.error(f"清理檔案失敗 {file_path}: {e}")
                         

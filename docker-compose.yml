@@ -25,13 +25,14 @@ services:
         echo '🔄 正在下載 AI 模型檔案...'
 
         download_from() {
-          URL=$$1
-          SOURCE_LABEL=$$2
-          echo \"📥 嘗試從 $$SOURCE_LABEL 下載...\"
-          if wget --timeout=60 --tries=3 --progress=bar:force:noscroll -O \"$$MODEL_PATH\" \"$$URL\"; then
+          URL=\$$1
+          SOURCE_LABEL=\$$2
+          echo \"📥 嘗試從 \$$SOURCE_LABEL 下載...\"
+          if wget --timeout=60 --tries=3 --progress=bar:force:noscroll -O \"\$$MODEL_PATH\" \"\$$URL\"; then
             return 0
+          else
+            return 1
           fi
-          return 1
         }
 
         download_from 'https://huggingface.co/spaces/mkrzyzan/face-swap/resolve/main/inswapper_128.onnx' 'HuggingFace' || \
@@ -62,6 +63,29 @@ services:
       "
     restart: "no"
 
+  redis:
+    image: redis:7-alpine
+    container_name: ai-face-swap-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 1gb
+      --maxmemory-policy allkeys-lru
+      --tcp-backlog 2048
+      --timeout 0
+      --tcp-keepalive 300
+      --maxclients 10000
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   frontend:
     image: docker.io/library/nginx:alpine
     container_name: ai-face-swap-frontend
@@ -87,7 +111,10 @@ services:
       # 一次全掛載整個後端目錄
       - ./backend:/app
     depends_on:
-      - model-downloader
+      redis:
+        condition: service_healthy
+      model-downloader:
+        condition: service_completed_successfully
     restart: unless-stopped
     deploy:
       resources:
@@ -98,18 +125,50 @@ services:
     environment:
       - PYTHONPATH=/app
       - ENVIRONMENT=development
+      - SERVICE_ROLE=api
+      - REDIS_URL=redis://redis:6379/0
     privileged: true
-    # 啟動 uvicorn，調整 backlog 與 keep-alive 以提升高併發連線能力
+    # 啟動 uvicorn，高併發優化 (支援 4000+ 並發任務)
     command: [
       "python", "-m", "uvicorn", "app:app",
       "--host", "0.0.0.0",
       "--port", "3001",
-      "--workers", "1",
-      "--backlog", "65535",
-      "--timeout-keep-alive", "600",
-      "--limit-max-requests", "100000",
+      "--workers", "8",
+      "--backlog", "4096",
+      "--timeout-keep-alive", "120",
+      "--limit-max-requests", "0",
+      "--limit-concurrency", "5000",
       "--log-level", "warning"
     ]
+
+  # Worker 容器已停用 - 改用 Backend API 的 asyncio.create_task 處理任務
+  # 優點: 減少 Redis 佇列延遲，提升高 QPS 性能
+  # worker:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: ai-face-swap-worker
+  #   volumes:
+  #     - ./backend:/app
+  #   depends_on:
+  #     redis:
+  #       condition: service_healthy
+  #     model-downloader:
+  #       condition: service_completed_successfully
+  #   restart: unless-stopped
+  #   environment:
+  #     - PYTHONPATH=/app
+  #     - ENVIRONMENT=development
+  #     - SERVICE_ROLE=worker
+  #     - REDIS_URL=redis://redis:6379/0
+  #   privileged: true
+  #   command: [
+  #     "python",
+  #     "worker.py"
+  #   ]
+
+volumes:
+  redis-data:
 
 networks:
   default:

@@ -9,6 +9,7 @@ BASE_DIR = Path(__file__).parent.parent
 MODELS_DIR = BASE_DIR / "models"
 UPLOADS_DIR = BASE_DIR / "uploads"
 RESULTS_DIR = BASE_DIR / "results"
+PENDING_UPLOADS_DIR = UPLOADS_DIR / "pending"
 
 # API 配置
 API_CONFIG = {
@@ -410,6 +411,7 @@ def ensure_directories():
     """確保必要的目錄存在"""
     directories = [
         UPLOADS_DIR,
+        PENDING_UPLOADS_DIR,
         RESULTS_DIR,
         MODELS_DIR,
         MODELS_DIR / "templates"
