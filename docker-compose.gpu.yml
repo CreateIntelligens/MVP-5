@@ -104,8 +104,6 @@ services:
     restart: unless-stopped
     deploy:
       resources:
-        limits:
-          memory: 5G
         reservations:
           memory: 3G
     healthcheck:
@@ -146,6 +144,9 @@ services:
       - ENVIRONMENT=production
       - REDIS_URL=redis://redis:6379/0
       - SERVICE_ROLE=api
+      - MAX_QUEUE_SIZE=${MAX_QUEUE_SIZE:-2000}
+      - ENABLE_QUEUE_LIMIT=${ENABLE_QUEUE_LIMIT:-true}
+      - TZ=Asia/Taipei
     # API 層多 worker，純排隊與查詢
     command: [
       "python", "-m", "uvicorn", "app:app",
@@ -173,8 +174,6 @@ services:
     restart: unless-stopped
     deploy:
       resources:
-        limits:
-          memory: 16G
         reservations:
           memory: 8G
           devices:
@@ -188,6 +187,7 @@ services:
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
       - REDIS_URL=redis://redis:6379/0
       - SERVICE_ROLE=worker
+      - TZ=Asia/Taipei
     command: [
       "python",
       "worker.py"

@@ -396,12 +396,26 @@ async function submitFaceSwapTask(file, templateId, retryCount = 0) {
         });
         
         clearTimeout(timeoutId);
-        
+
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
+
+            // 特殊處理 503 佇列已滿錯誤
+            if (response.status === 503 && errorData.detail) {
+                const detail = errorData.detail;
+
+                // 如果是結構化的錯誤訊息
+                if (typeof detail === 'object' && detail.error === 'queue_full') {
+                    throw new Error('系統繁忙，佇列已滿，請稍後再試');
+                }
+
+                // 如果是字串格式的錯誤
+                throw new Error(typeof detail === 'string' ? detail : detail.message || '系統繁忙，請稍後再試');
+            }
+
             throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
         }
-        
+
         const result = await response.json();
         return result;
         

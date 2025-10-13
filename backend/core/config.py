@@ -10,6 +10,7 @@ MODELS_DIR = BASE_DIR / "models"
 UPLOADS_DIR = BASE_DIR / "uploads"
 RESULTS_DIR = BASE_DIR / "results"
 PENDING_UPLOADS_DIR = UPLOADS_DIR / "pending"
+LOGS_DIR = BASE_DIR / "logs"
 
 # API 配置
 API_CONFIG = {
@@ -290,30 +291,42 @@ LOGGING_CONFIG = {
             "filename": "logs/app.log",
             "encoding": "utf-8",
         },
+        "error_file": {
+            "formatter": "detailed",
+            "class": "logging.FileHandler",
+            "filename": "logs/error.log",
+            "encoding": "utf-8",
+            "level": "ERROR",  # 只記錄 ERROR 和 CRITICAL
+        },
     },
     "root": {
         "level": "INFO",
-        "handlers": ["console"],
+        "handlers": ["console", "error_file"],  # 根 logger 也寫入 error.log
     },
     "loggers": {
         "backend.core.file_cleanup": {
             "level": "INFO",
-            "handlers": ["console", "file"],
+            "handlers": ["console", "file", "error_file"],
             "propagate": False
         },
         "backend.api.face_swap": {
             "level": "INFO",
-            "handlers": ["console", "file"],
+            "handlers": ["console", "file", "error_file"],
             "propagate": False
         },
         "backend.core.face_processor": {
             "level": "INFO",
-            "handlers": ["console", "file"],
+            "handlers": ["console", "file", "error_file"],
             "propagate": False
         },
         "backend.api.templates": {
             "level": "INFO",
-            "handlers": ["console", "file"],
+            "handlers": ["console", "file", "error_file"],
+            "propagate": False
+        },
+        "gpu_worker": {
+            "level": "INFO",
+            "handlers": ["console", "file", "error_file"],
             "propagate": False
         },
         # 過濾掉其他不重要的日誌
@@ -357,6 +370,13 @@ CACHE_CONFIG = {
     "REDIS_URL": os.getenv("REDIS_URL", "redis://localhost:6379"),
     "CACHE_TTL": 3600,  # 1 小時
     "MAX_CACHE_SIZE": 100  # 最大快取項目數
+}
+
+# 佇列配置
+QUEUE_CONFIG = {
+    "MAX_QUEUE_SIZE": int(os.getenv("MAX_QUEUE_SIZE", "2000")),  # 最大佇列容量
+    "ENABLE_QUEUE_LIMIT": os.getenv("ENABLE_QUEUE_LIMIT", "true").lower() == "true",  # 是否啟用佇列限制
+    "QUEUE_FULL_MESSAGE": "系統繁忙，佇列已滿，請稍後再試",  # 佇列滿時的提示訊息
 }
 
 # 檔案清理配置
@@ -414,7 +434,8 @@ def ensure_directories():
         PENDING_UPLOADS_DIR,
         RESULTS_DIR,
         MODELS_DIR,
-        MODELS_DIR / "templates"
+        MODELS_DIR / "templates",
+        LOGS_DIR  # 確保日誌目錄存在
     ]
 
     for directory in directories:

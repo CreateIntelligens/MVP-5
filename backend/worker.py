@@ -19,6 +19,11 @@ from api.face_swap import (
 )
 
 
+import time
+
+# 設置 logging 使用 UTC+8 時區
+logging.Formatter.converter = lambda *args: time.localtime(time.time() + 28800 - time.timezone)
+
 logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger("gpu_worker")
 

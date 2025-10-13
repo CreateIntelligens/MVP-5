@@ -17,6 +17,7 @@ from core.face_processor import get_face_processor, cleanup_old_results, get_sys
 from core.config import (
     UPLOAD_CONFIG,
     TEMPLATE_CONFIG,
+    QUEUE_CONFIG,
     get_template_path,
     RESULTS_DIR,
     UPLOADS_DIR,
@@ -300,9 +301,9 @@ async def swap_face(
 ):
     """
     非同步換臉任務提交
-    
+
     提交換臉任務至後台處理佇列，返回任務 ID 供狀態查詢
-    
+
     - **file**: 使用者上傳的照片檔案
     - **template_id**: 模板 ID (1-6)，可選參數
     - **template_file**: 自訂模板檔案，可選參數
@@ -310,8 +311,26 @@ async def swap_face(
     - **target_face_index**: 模板圖片中的臉部索引 (預設: 0)
     """
     try:
-        # 生成 task_id
+        # 檢查佇列容量限制
+        if QUEUE_CONFIG["ENABLE_QUEUE_LIMIT"]:
+            current_queue_size = await get_queue_size()
+            max_queue_size = QUEUE_CONFIG["MAX_QUEUE_SIZE"]
 
+            if current_queue_size >= max_queue_size:
+                logger.warning(
+                    f"佇列已滿，拒絕新任務。當前佇列: {current_queue_size}/{max_queue_size}"
+                )
+                raise HTTPException(
+                    status_code=503,  # Service Unavailable
+                    detail={
+                        "error": "queue_full",
+                        "message": QUEUE_CONFIG["QUEUE_FULL_MESSAGE"],
+                        "current_queue_size": current_queue_size,
+                        "max_queue_size": max_queue_size
+                    }
+                )
+
+        # 生成 task_id
         task_id = str(uuid.uuid4())
 
         # 自動判斷使用自訂模板還是預設模板
@@ -727,11 +746,19 @@ async def get_queue_status_api():
         # 檢查 GPU 鎖狀態
         gpu_lock_exists = await redis_client.exists(GPU_LOCK_KEY)
 
+        # 獲取佇列配置
+        current_queue_size = await get_queue_size()
+        max_queue_size = QUEUE_CONFIG["MAX_QUEUE_SIZE"] if QUEUE_CONFIG["ENABLE_QUEUE_LIMIT"] else None
+        queue_available = max_queue_size - current_queue_size if max_queue_size else None
+
         return {
             "success": True,
             "queue_status": {
-                "current_queue_size": await get_queue_size(),
-                "max_queue_size": "unlimited",  # 無限排隊模式
+                "current_queue_size": current_queue_size,
+                "max_queue_size": max_queue_size or "unlimited",
+                "queue_limit_enabled": QUEUE_CONFIG["ENABLE_QUEUE_LIMIT"],
+                "available_slots": queue_available,
+                "is_full": current_queue_size >= max_queue_size if max_queue_size else False,
                 "gpu_lock_active": bool(gpu_lock_exists),
                 "max_concurrent": 1  # GPU串行處理
             },

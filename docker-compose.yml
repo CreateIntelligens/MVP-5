@@ -67,23 +67,28 @@ services:
     image: redis:7-alpine
     container_name: ai-face-swap-redis
     restart: unless-stopped
-    ports:
-      - "6379:6379"
+    expose:
+      - "6379"
     volumes:
       - redis-data:/data
-    command: >
-      redis-server
+    command: redis-server
       --appendonly yes
-      --maxmemory 1gb
+      --maxmemory 4gb
       --maxmemory-policy allkeys-lru
       --tcp-backlog 2048
-      --timeout 0
-      --tcp-keepalive 300
-      --maxclients 10000
+      --timeout 300
+      --tcp-keepalive 60
+      --maxclients 25000
+      --hz 100
+      --databases 16
+    deploy:
+      resources:
+        reservations:
+          memory: 3G
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
+      interval: 10s
+      timeout: 5s
       retries: 5
 
   frontend:
@@ -108,7 +113,6 @@ services:
     expose:
       - "3001"
     volumes:
-      # 一次全掛載整個後端目錄
       - ./backend:/app
     depends_on:
       redis:
@@ -118,8 +122,6 @@ services:
     restart: unless-stopped
     deploy:
       resources:
-        limits:
-          memory: 4G
         reservations:
           memory: 2G
     environment:
@@ -127,45 +129,51 @@ services:
       - ENVIRONMENT=development
       - SERVICE_ROLE=api
       - REDIS_URL=redis://redis:6379/0
+      - MAX_QUEUE_SIZE=${MAX_QUEUE_SIZE:-2000}
+      - ENABLE_QUEUE_LIMIT=${ENABLE_QUEUE_LIMIT:-true}
+      - TZ=Asia/Taipei
     privileged: true
-    # 啟動 uvicorn，高併發優化 (支援 4000+ 並發任務)
+    # API 層多 worker，純排隊與查詢
     command: [
       "python", "-m", "uvicorn", "app:app",
       "--host", "0.0.0.0",
       "--port", "3001",
       "--workers", "8",
-      "--backlog", "4096",
-      "--timeout-keep-alive", "120",
-      "--limit-max-requests", "0",
-      "--limit-concurrency", "5000",
+      "--backlog", "65535",
+      "--timeout-keep-alive", "600",
       "--log-level", "warning"
     ]
 
-  # Worker 容器已停用 - 改用 Backend API 的 asyncio.create_task 處理任務
-  # 優點: 減少 Redis 佇列延遲，提升高 QPS 性能
-  # worker:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   container_name: ai-face-swap-worker
-  #   volumes:
-  #     - ./backend:/app
-  #   depends_on:
-  #     redis:
-  #       condition: service_healthy
-  #     model-downloader:
-  #       condition: service_completed_successfully
-  #   restart: unless-stopped
-  #   environment:
-  #     - PYTHONPATH=/app
-  #     - ENVIRONMENT=development
-  #     - SERVICE_ROLE=worker
-  #     - REDIS_URL=redis://redis:6379/0
-  #   privileged: true
-  #   command: [
-  #     "python",
-  #     "worker.py"
-  #   ]
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-face-swap-worker
+    volumes:
+      - ./backend:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+      model-downloader:
+        condition: service_completed_successfully
+      backend:
+        condition: service_started
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          memory: 8G
+    environment:
+      - PYTHONPATH=/app
+      - ENVIRONMENT=development
+      - SERVICE_ROLE=worker
+      - REDIS_URL=redis://redis:6379/0
+      - TZ=Asia/Taipei
+    privileged: true
+    command: [
+      "python",
+      "worker.py"
+    ]
 
 volumes:
   redis-data:

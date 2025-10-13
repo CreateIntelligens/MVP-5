@@ -16,6 +16,11 @@ from core.file_cleanup import get_cleanup_manager, cleanup_now, get_storage_stat
 
 # 設定日誌
 import logging.config
+import time
+
+# 設置 logging 使用 UTC+8 時區
+logging.Formatter.converter = lambda *args: time.localtime(time.time() + 28800 - time.timezone)
+
 logging.config.dictConfig(LOGGING_CONFIG)
 
 SERVICE_ROLE = os.getenv("SERVICE_ROLE", "api").lower()
